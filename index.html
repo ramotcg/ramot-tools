@@ -558,6 +558,9 @@ async function genMemo(){
 
   var prompt='You are a senior PE associate at RAMOT Consulting Group writing an Investment Memo for the Managing Director.\n\nBusiness: '+bizName+'\nIndustry: '+industry+'\nScore: '+score+'/100 - '+verdict+'\nAsking Price: '+(snapData['Asking price']||'Not disclosed')+'\nRevenue: '+(snapData['Revenue']||'Not disclosed')+'\nSDE: '+(snapData['SDE']||'Not disclosed')+'\nRevenue Y1: '+(finData['Revenue Y1']||'Not disclosed')+'\nRevenue Y2: '+(finData['Revenue Y2']||'Not disclosed')+'\nRevenue Y3: '+(finData['Revenue Y3']||'Not disclosed')+'\nEmployees: '+(snapData['Employees']||'Not disclosed')+'\nStrengths: '+strengths.join('; ')+'\nRisks: '+risks.join('; ')+'\nDue Diligence: '+ddItems.join('; ')+'\n\nWrite a comprehensive Investment Memo. Use these exact section headers:\n# EXECUTIVE SUMMARY\n# DEAL OVERVIEW\n# MARKET ANALYSIS\n## Industry Overview & TAM\n## Growth Drivers\n## Headwinds & Challenges\n## Competitive Landscape\n## Customer & Demand Analysis\n# FINANCIAL ANALYSIS\n# COMPARABLE TRANSACTIONS\n# INVESTMENT THESIS\n# KEY RISKS & MITIGANTS\n# RECOMMENDATION\n\nBe specific with numbers. Professional PE memo style for MD presentation.';
 
+  // Open window immediately (before async) to avoid popup blocker
+  var pdfWin=window.open('','_blank');
+  if(pdfWin)pdfWin.document.write('<html><body><p style="font-family:sans-serif;padding:2rem;color:#666">Generating memo, please wait...</p></body></html>');
   try{
     document.getElementById('mprog').style.width='40%';
     var raw=await callAPI([{role:'user',content:prompt}],'claude-sonnet-4-5',8192);
@@ -567,12 +570,15 @@ async function genMemo(){
     document.getElementById('mprog').style.width='100%';
     document.getElementById('memo-load').style.display='none';
     document.getElementById('memobtn').disabled=false;
-    var blob=new Blob([pdfHtml],{type:'text/html'});
-    var url=URL.createObjectURL(blob);
-    var w=window.open(url,'_blank');
-    setTimeout(function(){
-      if(w)w.print();
-    },1500);
+    if(pdfWin){
+      pdfWin.document.open();
+      pdfWin.document.write(pdfHtml);
+      pdfWin.document.close();
+    } else {
+      var blob=new Blob([pdfHtml],{type:'text/html'});
+      var url=URL.createObjectURL(blob);
+      window.open(url,'_blank');
+    }
   }catch(e){
     document.getElementById('memo-load').style.display='none';
     document.getElementById('memo-out').style.display='block';
