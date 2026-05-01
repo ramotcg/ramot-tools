@@ -260,8 +260,8 @@ function gateSubmit(){
   var v=document.getElementById('g-code').value.trim().toUpperCase();
   var k=document.getElementById('g-apikey').value.trim();
   if(v!==PW){document.getElementById('g-err').textContent='Incorrect access code.';document.getElementById('g-code').value='';document.getElementById('g-code').focus();return;}
-  if(!k||!k.startsWith('sk-')){document.getElementById('g-err').textContent='Please enter a valid Anthropic API key.';document.getElementById('g-apikey').focus();return;}
-  AK=k;show();sessionStorage.setItem('ra','1');sessionStorage.setItem('ak',k);
+  if(!k){document.getElementById('g-err').textContent='Please enter your Anthropic API key.';document.getElementById('g-apikey').focus();return;}
+  AK=k.trim();show();sessionStorage.setItem('ra','1');sessionStorage.setItem('ak',k.trim());
 }
 function show(){document.getElementById('gate').style.display='none';document.getElementById('app').style.display='flex';}
 function logout(){sessionStorage.removeItem('ra');document.getElementById('gate').style.display='flex';document.getElementById('app').style.display='none';document.getElementById('g-code').value='';document.getElementById('g-err').textContent='';}
@@ -340,16 +340,17 @@ async function run(){
 
   var ab=await cimF.arrayBuffer();
   var pdf=await pdfjsLib.getDocument({data:ab}).promise;
+  var total=pdf.numPages;
   var txt='';
-  for(var i=1;i<=Math.min(pdf.numPages,15);i++){
+  for(var i=1;i<=total;i++){
     var pg=await pdf.getPage(i);
     var c=await pg.getTextContent();
     txt+=c.items.map(function(s){return s.str;}).join(' ')+'\n';
-    sp(5+Math.round(i/Math.min(pdf.numPages,15)*35));
+    sp(5+Math.round(i/total*40));
   }
   if(txt.trim().length<200){document.getElementById('cim-up').style.display='block';document.getElementById('cim-load').style.display='none';se('Not enough readable text found.');return;}
 
-  var t=txt.length>12000?txt.substring(0,12000)+'...[truncated]':txt;
+  var t=txt.length>50000?txt.substring(0,50000)+'...[truncated]':txt;
   sp(45,'Analyzing with AI...');
 
   var prompt='Return ONLY a JSON object analyzing this business CIM. No text outside the JSON.\n\n{"businessName":"","industry":"","location":"","score":70,"scoreVerdict":"","scoreRationale":"","snapshot":[{"label":"Business type","value":""},{"label":"Asking price","value":""},{"label":"Revenue","value":""},{"label":"SDE","value":""},{"label":"Employees","value":""},{"label":"Years operating","value":""},{"label":"Reason for sale","value":""},{"label":"Customer concentration","value":""}],"strengths":[{"text":"","severity":"green"},{"text":"","severity":"green"}],"risks":[{"text":"","severity":"red"},{"text":"","severity":"amber"}],"marketContext":"","financialMetrics":[{"label":"Asking price","value":"","benchmark":null},{"label":"Revenue","value":"","benchmark":null},{"label":"SDE","value":"","benchmark":null},{"label":"SDE multiple","value":"","benchmark":"market avg 3.44x"}],"financialTable":[{"label":"Revenue Y1","value":""},{"label":"Revenue Y2","value":""},{"label":"Revenue Y3","value":""},{"label":"Adj SDE","value":""},{"label":"FF&E","value":""}],"benchmarkComparison":"","financialNotes":"","sbaEligible":"Yes","sbaTable":[{"label":"Loan type","value":"SBA 7(a)"},{"label":"Est loan","value":""},{"label":"Est down","value":""},{"label":"Rate","value":"9.5%"},{"label":"Est DSCR","value":""}],"dscrAnalysis":"","sbaFlags":[{"text":"","severity":"green"}],"dueDiligence":[{"text":"","severity":"amber"},{"text":"","severity":"amber"}],"sellerQuestions":[{"text":"","severity":"amber"},{"text":"","severity":"amber"}],"nextActions":[{"text":"","severity":"green"},{"text":"","severity":"green"}]}\n\nRules: score=0-100, severity=green/amber/red, missing="Not disclosed", DSCR=90%LTV 9.5% 10yr.\n\nCIM:\n'+t;
