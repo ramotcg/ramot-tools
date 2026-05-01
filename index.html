@@ -4,8 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="0">
 <title>RAMOT Deal Tools</title>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -36,7 +34,6 @@ body{font-family:'Jost',sans-serif;background:var(--cream);color:var(--text);min
 .tbsep{width:1px;height:14px;background:rgba(255,255,255,0.2);margin:0 10px}
 .tbsub{font-size:11px;color:rgba(255,255,255,0.45)}
 .signout{background:none;border:1px solid rgba(255,255,255,0.2);color:rgba(255,255,255,0.55);font-family:'Jost',sans-serif;font-size:11px;padding:5px 11px;border-radius:var(--r);cursor:pointer}
-.signout:hover{color:var(--white);border-color:rgba(255,255,255,0.5)}
 .nav{background:var(--white);border-bottom:1px solid var(--b);display:flex;padding:0 1.5rem}
 .nb{padding:14px 18px;font-size:13px;font-weight:500;color:var(--tl);cursor:pointer;border-bottom:2px solid transparent;background:none;border-top:none;border-left:none;border-right:none;font-family:'Jost',sans-serif}
 .nb.on{color:var(--navy);border-bottom-color:var(--copper)}
@@ -248,32 +245,444 @@ body{font-family:'Jost',sans-serif;background:var(--cream);color:var(--text);min
   </div>
 </div>
 <script>
-JSEOF
+// RAMOT Deal Tools - Full JavaScript
 
-# Append the validated JS
-cat /tmp/ramot.js >> /home/claude/ramot-final/index.html
+var PW='RAMOT6', AK='';
 
-# Close the script tag and HTML
-echo '</script>
+// AUTH
+function gateSubmit(){
+  var code=document.getElementById('gcode').value.trim().toUpperCase();
+  var key=document.getElementById('gapikey').value.trim();
+  if(code!==PW){document.getElementById('gerr').textContent='Incorrect access code.';return;}
+  if(!key){document.getElementById('gerr').textContent='Please enter your Anthropic API key.';return;}
+  AK=key;
+  document.getElementById('gate').style.display='none';
+  document.getElementById('app').style.display='flex';
+  sessionStorage.setItem('ra','1');
+  sessionStorage.setItem('ak',key);
+}
+function signOut(){
+  sessionStorage.clear();AK='';
+  document.getElementById('gate').style.display='flex';
+  document.getElementById('app').style.display='none';
+  document.getElementById('gcode').value='';
+  document.getElementById('gapikey').value='';
+  document.getElementById('gerr').textContent='';
+}
+(function(){
+  if(sessionStorage.getItem('ra')==='1'&&sessionStorage.getItem('ak')){
+    AK=sessionStorage.getItem('ak');
+    document.getElementById('gate').style.display='none';
+    document.getElementById('app').style.display='flex';
+  }
+})();
+
+// NAV
+function showPg(id,btn){
+  document.querySelectorAll('.pg').forEach(function(p){p.classList.remove('on');});
+  document.querySelectorAll('.nb').forEach(function(b){b.classList.remove('on');});
+  document.getElementById('pg-'+id).classList.add('on');
+  btn.classList.add('on');
+}
+
+// BENCHMARKS
+var BM={
+  services:{n:'Business Services',s:3.6,r:0.8,m:22,d:3.1},
+  manufacturing:{n:'Manufacturing',s:3.2,r:0.6,m:18,d:4.2},
+  construction:{n:'Construction',s:3.1,r:0.5,m:15,d:5.1},
+  distribution:{n:'Distribution',s:3.3,r:0.4,m:12,d:3.8},
+  healthcare:{n:'Healthcare',s:3.8,r:0.9,m:24,d:2.8},
+  technology:{n:'Technology',s:4.2,r:1.2,m:28,d:2.5},
+  restaurant:{n:'Restaurant',s:2.3,r:0.4,m:10,d:7.2},
+  retail:{n:'Retail',s:2.5,r:0.4,m:11,d:6.1},
+  automotive:{n:'Automotive',s:2.8,r:0.5,m:14,d:4.5},
+  hvac:{n:'HVAC',s:3.3,r:0.6,m:18,d:3.9},
+  landscaping:{n:'Landscaping',s:2.9,r:0.5,m:16,d:4.3},
+  other:{n:'Other',s:3.44,r:0.6,m:16,d:4.0}
+};
+function updBM(){
+  var i=document.getElementById('ind').value,b=document.getElementById('bmbanner');
+  if(!i||!BM[i]){b.style.display='none';return;}
+  var bm=BM[i];b.style.display='block';
+  b.innerHTML='<strong>'+bm.n+'</strong> \u2014 SDE avg: <strong>'+bm.s+'x</strong> \u00b7 Default rate: <strong>'+bm.d+'%</strong> \u00b7 <span style="color:var(--tl);font-size:11px">Peercomps/IBBA Q3 2025</span>';
+}
+
+// CALCULATOR
+var fin='sba',ex={exp:[],cls:[]};
+function setFin(t){
+  fin=t;
+  ['sba','custom','none'].forEach(function(x){
+    var id=x==='sba'?'t-sba':x==='custom'?'t-cst':'t-non';
+    document.getElementById(id).className='ttab'+(x===t?' on':'');
+  });
+  document.getElementById('bankf').style.display=t==='none'?'none':'block';
+}
+function syncD(f){
+  var p=parseFloat(document.getElementById('cprice').value)||0;
+  if(!p)return;
+  if(f==='p'){document.getElementById('cdamt').value=Math.round(p*(parseFloat(document.getElementById('cdpct').value)||0)/100)||'';}
+  else{document.getElementById('cdpct').value=p?((parseFloat(document.getElementById('cdamt').value)||0)/p*100).toFixed(1):'';}
+}
+function addX(t){
+  var id=Date.now();ex[t].push(id);
+  var l=document.getElementById(t==='exp'?'expl':'clsl');
+  var d=document.createElement('div');d.className='xrow';d.id='x'+id;
+  d.innerHTML='<input type="text" placeholder="Label" style="width:40%"><input type="number" placeholder="Amount"><button class="rmbtn" onclick="rmX(\''+t+'\','+id+')">x</button>';
+  l.appendChild(d);
+}
+function rmX(t,id){ex[t]=ex[t].filter(function(x){return x!==id;});var e=document.getElementById('x'+id);if(e)e.remove();}
+function xtot(t){return ex[t].reduce(function(s,id){var e=document.getElementById('x'+id);if(!e)return s;return s+(parseFloat(e.querySelectorAll('input')[1].value)||0);},0);}
+function gn(id){return parseFloat(document.getElementById(id).value)||0;}
+function fm(n){return(isNaN(n)||n==null)?'--':'$'+Math.round(n).toLocaleString();}
+function fx(n){return(!n||isNaN(n)||!isFinite(n))?'--':n.toFixed(2)+'x';}
+function fp(n){return isNaN(n)?'--':n.toFixed(1)+'%';}
+function sv(id,val,cls){var e=document.getElementById(id);e.textContent=val;e.className='mv'+(cls?' '+cls:'');}
+function pmt(r,y,pv){if(!r||!y||!pv)return 0;var m=r/12/100,n=y*12;return pv*(m*Math.pow(1+m,n))/(Math.pow(1+m,n)-1);}
+function gfee(l){return l<=150000?l*0.02:l<=700000?l*0.03:l*0.035;}
+function doCalc(){
+  var price=gn('cprice'),rev=gn('crev'),sde=gn('csde'),rate=gn('crate'),term=gn('cterm'),samt=gn('csamt'),srate=gn('csrate'),sterm=gn('csterm');
+  var dpct=(gn('cdpct')||10)/100,damt=gn('cdamt')||(price*dpct);
+  var loan=gn('cloan')||(price-damt-samt);if(loan<0)loan=0;
+  var addE=xtot('exp'),addC=xtot('cls');
+  var fee=fin==='sba'?gfee(loan):0;
+  var tAcq=price+fee+addC,tDown=damt+fee+addC,tDebt=loan+samt;
+  var bPmt=fin!=='none'?pmt(rate,term,loan):0,sPmt=samt?pmt(srate,sterm,samt):0;
+  var moT=bPmt+sPmt,annT=moT*12;
+  var adjSDE=sde-addE,dscr=annT>0?adjSDE/annT:null,payback=adjSDE>0?damt/adjSDE:null;
+  var sdeM=sde>0?price/sde:null,revM=rev>0?price/rev:null,margin=rev>0?sde/rev*100:null;
+  sv('r-price',fm(price));sv('r-sde',fm(sde));sv('r-rev',fm(rev));
+  sv('r-sdem',fx(sdeM));sv('r-revm',fx(revM));sv('r-margin',fp(margin));
+  sv('r-total',fm(tAcq));sv('r-down',fm(tDown));sv('r-debt',fm(tDebt));
+  sv('r-gfee',fin==='sba'?fm(fee):'N/A');sv('r-mo',fm(moT));sv('r-ann',fm(annT));
+  if(dscr!==null&&isFinite(dscr)){
+    var cls=dscr>=1.25?'good':dscr>=1.0?'warn':'bad';
+    sv('r-dscr',dscr.toFixed(2)+'x',cls);
+    var bar=document.getElementById('r-dscr-b');
+    bar.style.width=Math.min(dscr/2.5*100,100)+'%';
+    bar.style.background=dscr>=1.25?'#2d6a4f':dscr>=1.0?'#b07d00':'#7d1a1a';
+    document.getElementById('r-dscr-n').textContent=dscr>=1.25?'Strong - above 1.25x':dscr>=1.0?'Marginal':'Below SBA minimum';
+  } else {sv('r-dscr','--');}
+  sv('r-pay',payback?payback.toFixed(1)+' yrs':'--');
+  var ind=document.getElementById('ind').value,bm=ind?BM[ind]:null;
+  document.getElementById('r-sdem-b').innerHTML=bm&&sdeM?'<span style="color:'+(sdeM>bm.s?'#7d1a1a':'#2d6a4f')+'">market avg '+bm.s+'x ('+(sdeM>bm.s?'above':'below')+')</span>':'';
+  document.getElementById('r-revm-b').innerHTML=bm&&revM?'<span style="color:#8a96a8">market avg '+bm.r+'x</span>':'';
+  if(bm){sv('r-dr',bm.d.toFixed(1)+'%',bm.d>5?'bad':bm.d>3.5?'warn':'good');document.getElementById('r-dr-n').textContent='All industries avg: 4.0%';}
+  else{sv('r-dr','--');document.getElementById('r-dr-n').textContent='Select industry above';}
+}
+function clrCalc(){
+  ['cprice','crev','csde','cloan','cdamt','csamt'].forEach(function(id){document.getElementById(id).value='';});
+  document.getElementById('cdpct').value='10';document.getElementById('crate').value='9.5';
+  document.getElementById('cterm').value='10';document.getElementById('csrate').value='6';document.getElementById('csterm').value='5';
+  document.getElementById('expl').innerHTML='';document.getElementById('clsl').innerHTML='';
+  ex={exp:[],cls:[]};setFin('sba');document.getElementById('ind').value='';
+  ['r-price','r-sde','r-rev','r-sdem','r-revm','r-margin','r-total','r-down','r-debt','r-gfee','r-mo','r-ann','r-dscr','r-pay'].forEach(function(id){sv(id,'--');});
+  ['r-sdem-b','r-revm-b'].forEach(function(id){document.getElementById(id).innerHTML='';});
+  document.getElementById('r-dscr-b').style.width='0%';document.getElementById('r-dscr-n').textContent='';
+  sv('r-dr','--');document.getElementById('r-dr-n').textContent='Select industry above';
+  document.getElementById('bmbanner').style.display='none';
+}
+
+// API
+pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+async function callAPI(msgs,model,maxTok){
+  var resp=await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      'x-api-key':AK,
+      'anthropic-version':'2023-06-01',
+      'anthropic-dangerous-direct-browser-access':'true'
+    },
+    body:JSON.stringify({model:model||'claude-haiku-4-5-20251001',max_tokens:maxTok||8192,messages:msgs})
+  });
+  var data=await resp.json();
+  if(!resp.ok)throw new Error(data.error&&data.error.message?data.error.message:'Error '+resp.status);
+  return data.content.filter(function(b){return b.type==='text';}).map(function(b){return b.text;}).join('');
+}
+
+// CIM
+var cimFile=null,cimData={};
+function onDrag(e,on){e.preventDefault();}
+function onDrop(e){e.preventDefault();if(e.dataTransfer.files[0])onFile(e.dataTransfer.files[0]);}
+function onFile(f){
+  if(!f||f.type!=='application/pdf'){showErr('Please upload a PDF.');return;}
+  cimFile=f;
+  document.getElementById('cerr').innerHTML='';
+  document.getElementById('cchip').innerHTML='<div class="fchip"><span>'+f.name+'</span><button onclick="clrFile(event)">x</button></div>';
+  document.getElementById('cbtn').disabled=false;
+}
+function clrFile(e){e.stopPropagation();cimFile=null;document.getElementById('cchip').innerHTML='';document.getElementById('cbtn').disabled=true;}
+function showErr(msg){document.getElementById('cerr').innerHTML='<div class="errbox">'+msg+'</div>';}
+function sp(pct,msg){
+  document.getElementById('cprog').style.width=pct+'%';
+  if(msg)document.getElementById('clmsg').textContent=msg;
+}
+async function runCIM(){
+  if(!cimFile)return;
+  document.getElementById('cim-up').style.display='none';
+  document.getElementById('cim-load').style.display='block';
+  document.getElementById('cim-res').style.display='none';
+  document.getElementById('memo-out').style.display='none';
+  sp(5,'Reading PDF...');
+  var ab=await cimFile.arrayBuffer();
+  var pdf=await pdfjsLib.getDocument({data:ab}).promise;
+  var total=pdf.numPages,txt='';
+  for(var i=1;i<=total;i++){
+    var pg=await pdf.getPage(i);
+    var c=await pg.getTextContent();
+    txt+=c.items.map(function(s){return s.str;}).join(' ')+'\n';
+    sp(5+Math.round(i/total*40));
+  }
+  if(txt.trim().length<200){
+    document.getElementById('cim-up').style.display='block';
+    document.getElementById('cim-load').style.display='none';
+    showErr('Not enough readable text found.');
+    return;
+  }
+  sp(50,'Analyzing with AI...');
+  var prompt='Return ONLY a JSON object analyzing this business CIM. No text before or after.\n\n{"businessName":"","industry":"","location":"","score":70,"scoreVerdict":"","scoreRationale":"","snapshot":[{"label":"Business type","value":""},{"label":"Asking price","value":""},{"label":"Revenue","value":""},{"label":"SDE","value":""},{"label":"Employees","value":""},{"label":"Years operating","value":""},{"label":"Reason for sale","value":""},{"label":"Customer concentration","value":""}],"strengths":[{"text":"","severity":"green"}],"risks":[{"text":"","severity":"red"}],"marketContext":"","financialMetrics":[{"label":"Asking price","value":"","benchmark":null},{"label":"Revenue","value":"","benchmark":null},{"label":"SDE","value":"","benchmark":null},{"label":"SDE multiple","value":"","benchmark":"market avg 3.44x"}],"financialTable":[{"label":"Revenue Y1","value":""},{"label":"Revenue Y2","value":""},{"label":"Revenue Y3","value":""},{"label":"Adj SDE","value":""},{"label":"FF&E","value":""}],"benchmarkComparison":"","financialNotes":"","sbaEligible":"Yes","sbaTable":[{"label":"Loan type","value":"SBA 7(a)"},{"label":"Est loan","value":""},{"label":"Est down","value":""},{"label":"Rate","value":"9.5%"},{"label":"Est DSCR","value":""}],"dscrAnalysis":"","sbaFlags":[{"text":"","severity":"green"}],"dueDiligence":[{"text":"","severity":"amber"}],"sellerQuestions":[{"text":"","severity":"amber"}],"nextActions":[{"text":"","severity":"green"}]}\n\nRules: score=0-100, severity=green/amber/red, missing=Not disclosed, DSCR=90pct LTV 9.5pct 10yr.\n\nCIM:\n'+txt;
+  try{
+    var raw=await callAPI([{role:'user',content:prompt}],'claude-haiku-4-5-20251001',8192);
+    var clean=raw.replace(/```json|```/g,'').trim();
+    if(!clean.endsWith('}')){var lb=clean.lastIndexOf('}');if(lb>0)clean=clean.substring(0,lb+1);}
+    var result=JSON.parse(clean);
+    cimData=result;
+    sp(100);
+    renderCIM(result);
+    document.getElementById('cim-load').style.display='none';
+    document.getElementById('cim-res').style.display='block';
+  }catch(e){
+    document.getElementById('cim-up').style.display='block';
+    document.getElementById('cim-load').style.display='none';
+    showErr('Analysis failed: '+e.message);
+  }
+}
+function renderCIM(r){
+  document.getElementById('cr-n').textContent=r.businessName||'Unnamed business';
+  document.getElementById('cr-m').textContent=[r.industry,r.location].filter(Boolean).join(' - ');
+  var score=r.score||0,badge=document.getElementById('cr-b');
+  badge.textContent=score;badge.className='sbadge '+(score>=70?'strong':score>=50?'moderate':'weak');
+  document.getElementById('cr-v').textContent=r.scoreVerdict||'';
+  document.getElementById('cr-r').textContent=r.scoreRationale||'';
+  rkv('cr-snap',r.snapshot||[]);rfl('cr-str',r.strengths||[]);rfl('cr-risk',r.risks||[]);
+  document.getElementById('cr-mkt').textContent=r.marketContext||'--';
+  var mg=document.getElementById('cr-fm');mg.innerHTML='';
+  (r.financialMetrics||[]).forEach(function(m){
+    mg.innerHTML+='<div class="m"><div class="ml">'+m.label+'</div><div class="mv">'+m.value+'</div>'+(m.benchmark?'<div class="mvs">'+m.benchmark+'</div>':'')+'</div>';
+  });
+  rkv('cr-ft',r.financialTable||[]);
+  document.getElementById('cr-bc').textContent=r.benchmarkComparison||'--';
+  document.getElementById('cr-fn').innerHTML='<p>'+(r.financialNotes||'')+'</p>';
+  var el=r.sbaEligible||'Unknown',cls=(el==='Yes'||el==='Likely')?'yes':(el==='No'||el==='Unlikely')?'no':'maybe';
+  document.getElementById('cr-sp').innerHTML='<span class="sbapill '+cls+'">SBA eligible: '+el+'</span>';
+  rkv('cr-st',r.sbaTable||[]);
+  document.getElementById('cr-da').innerHTML='<p>'+(r.dscrAnalysis||'')+'</p>';
+  rfl('cr-sf',r.sbaFlags||[]);rfl('cr-dd',r.dueDiligence||[]);rfl('cr-sq',r.sellerQuestions||[]);rfl('cr-na',r.nextActions||[]);
+}
+function rkv(id,rows){
+  var t=document.getElementById(id);t.innerHTML='';
+  (rows||[]).forEach(function(r){t.innerHTML+='<tr><td>'+r.label+'</td><td>'+r.value+'</td></tr>';});
+}
+function rfl(id,items){
+  var ul=document.getElementById(id);ul.innerHTML='';
+  (items||[]).forEach(function(item){
+    ul.innerHTML+='<li class="fi '+(item.severity||'amber')+'"><span class="fdot"></span><span>'+item.text+'</span></li>';
+  });
+}
+function cimTab(name,btn){
+  document.querySelectorAll('.ctab').forEach(function(b){b.classList.remove('on');});
+  document.querySelectorAll('.cpanel').forEach(function(p){p.classList.remove('on');});
+  btn.classList.add('on');
+  document.getElementById('cp-'+name).classList.add('on');
+}
+function resetCIM(){
+  cimFile=null;cimData={};
+  document.getElementById('cchip').innerHTML='';
+  document.getElementById('cbtn').disabled=true;
+  document.getElementById('cerr').innerHTML='';
+  document.getElementById('cim-res').style.display='none';
+  document.getElementById('cim-up').style.display='block';
+  document.getElementById('memo-out').style.display='none';
+  cimTab('overview',document.querySelector('.ctab'));
+}
+
+// INVESTMENT MEMO
+function md(text){
+  if(!text)return '';
+  var out='';
+  var paras=text.split('\n\n');
+  for(var i=0;i<paras.length;i++){
+    var p=paras[i].trim();
+    if(!p)continue;
+    if(p.indexOf('## ')===0){out+='<div class="subsec">'+p.slice(3)+'</div>';continue;}
+    if(p.indexOf('### ')===0){out+='<div class="subsubsec">'+p.slice(4)+'</div>';continue;}
+    var plines=p.split('\n');
+    var isList=true;
+    for(var k=0;k<plines.length;k++){if(plines[k].trim()&&!plines[k].trim().match(/^[*\-]/)){isList=false;break;}}
+    if(isList&&plines.some(function(l){return l.trim().match(/^[*\-]/);})){
+      out+='<ul>';
+      for(var j=0;j<plines.length;j++){
+        var l=plines[j].trim().replace(/^[*\-]\s*/,'');
+        if(l)out+='<li>'+l.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>')+'</li>';
+      }
+      out+='</ul>';
+      continue;
+    }
+    p=p.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');
+    out+='<p>'+p+'</p>';
+  }
+  return out;
+}
+
+async function genMemo(){
+  document.getElementById('memobtn').disabled=true;
+  document.getElementById('memo-load').style.display='block';
+  document.getElementById('memo-out').style.display='none';
+  document.getElementById('mprog').style.width='10%';
+
+  var r=cimData;
+  var bizName=r.businessName||document.getElementById('cr-n').textContent;
+  var industry=(r.industry||document.getElementById('cr-m').textContent.split(' - ')[0]||'');
+  var score=r.score||document.getElementById('cr-b').textContent;
+  var verdict=r.scoreVerdict||document.getElementById('cr-v').textContent;
+  var snapData={},finData={};
+  document.querySelectorAll('#cr-snap tr').forEach(function(row){var c=row.querySelectorAll('td');if(c.length===2)snapData[c[0].textContent]=c[1].textContent;});
+  document.querySelectorAll('#cr-ft tr').forEach(function(row){var c=row.querySelectorAll('td');if(c.length===2)finData[c[0].textContent]=c[1].textContent;});
+  var strengths=[],risks=[],ddItems=[];
+  document.querySelectorAll('#cr-str li span:last-child').forEach(function(s){strengths.push(s.textContent);});
+  document.querySelectorAll('#cr-risk li span:last-child').forEach(function(s){risks.push(s.textContent);});
+  document.querySelectorAll('#cr-dd li span:last-child').forEach(function(s){ddItems.push(s.textContent);});
+
+  document.getElementById('mprog').style.width='20%';
+  document.getElementById('mlmsg').textContent='Writing investment memo...';
+
+  var prompt='You are a senior PE associate at RAMOT Consulting Group writing an Investment Memo for the Managing Director.\n\nBusiness: '+bizName+'\nIndustry: '+industry+'\nScore: '+score+'/100 - '+verdict+'\nAsking Price: '+(snapData['Asking price']||'Not disclosed')+'\nRevenue: '+(snapData['Revenue']||'Not disclosed')+'\nSDE: '+(snapData['SDE']||'Not disclosed')+'\nRevenue Y1: '+(finData['Revenue Y1']||'Not disclosed')+'\nRevenue Y2: '+(finData['Revenue Y2']||'Not disclosed')+'\nRevenue Y3: '+(finData['Revenue Y3']||'Not disclosed')+'\nEmployees: '+(snapData['Employees']||'Not disclosed')+'\nStrengths: '+strengths.join('; ')+'\nRisks: '+risks.join('; ')+'\nDue Diligence: '+ddItems.join('; ')+'\n\nWrite a comprehensive Investment Memo. Use these exact section headers:\n# EXECUTIVE SUMMARY\n# DEAL OVERVIEW\n# MARKET ANALYSIS\n## Industry Overview & TAM\n## Growth Drivers\n## Headwinds & Challenges\n## Competitive Landscape\n## Customer & Demand Analysis\n# FINANCIAL ANALYSIS\n# COMPARABLE TRANSACTIONS\n# INVESTMENT THESIS\n# KEY RISKS & MITIGANTS\n# RECOMMENDATION\n\nBe specific with numbers. Professional PE memo style for MD presentation.';
+
+  try{
+    document.getElementById('mprog').style.width='40%';
+    var raw=await callAPI([{role:'user',content:prompt}],'claude-sonnet-4-5',8192);
+    document.getElementById('mprog').style.width='90%';
+    document.getElementById('mlmsg').textContent='Formatting memo...';
+    buildMemoPDF(raw,bizName,industry,score,verdict,snapData,finData);
+    document.getElementById('mprog').style.width='100%';
+    document.getElementById('memo-load').style.display='none';
+    document.getElementById('memo-out').style.display='block';
+    document.getElementById('memobtn').disabled=false;
+    document.getElementById('memo-out').scrollIntoView({behavior:'smooth'});
+  }catch(e){
+    document.getElementById('memo-load').style.display='none';
+    document.getElementById('memo-out').style.display='block';
+    document.getElementById('memo-out').innerHTML='<div class="errbox">Failed: '+e.message+'</div>';
+    document.getElementById('memobtn').disabled=false;
+  }
+}
+
+function buildMemoPDF(raw,bizName,industry,score,verdict,snapData,finData){
+  var sections={};
+  var cur='',buf=[];
+  var lines=raw.split('\n');
+  for(var i=0;i<lines.length;i++){
+    var line=lines[i];
+    if(line.indexOf('# ')===0&&line.indexOf('## ')!==0){
+      if(cur)sections[cur]=buf.join('\n');
+      cur=line.replace(/^# /,'').trim();
+      buf=[];
+    } else {buf.push(line);}
+  }
+  if(cur)sections[cur]=buf.join('\n');
+
+  var scoreN=parseInt(score);
+  var scoreColor=scoreN>=70?'#2d6a4f':scoreN>=50?'#7d5a00':'#7d1a1a';
+  var scoreBg=scoreN>=70?'#d8f3dc':scoreN>=50?'#fff3cd':'#fde8e8';
+  var today=new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+
+  var metrics=[
+    ['Asking Price',snapData['Asking price']||'Not disclosed'],
+    ['Revenue (TTM)',snapData['Revenue']||'Not disclosed'],
+    ['SDE / EBITDA',snapData['SDE']||'Not disclosed'],
+    ['Revenue Y1',finData['Revenue Y1']||'Not disclosed'],
+    ['Revenue Y2',finData['Revenue Y2']||'Not disclosed'],
+    ['Revenue Y3',finData['Revenue Y3']||'Not disclosed'],
+    ['Employees',snapData['Employees']||'Not disclosed'],
+    ['Years Operating',snapData['Years operating']||'Not disclosed'],
+    ['Reason for Sale',snapData['Reason for sale']||'Not disclosed'],
+    ['Customer Concentration',snapData['Customer concentration']||'Not disclosed']
+  ];
+  var mrows=metrics.map(function(m,i){
+    return '<tr style="background:'+(i%2===0?'#f8f4ee':'#fff')+'"><td style="padding:7px 12px;color:#4a5568;font-size:12px;width:40%;border-right:1px solid #e2e8f0">'+m[0]+'</td><td style="padding:7px 12px;color:#1a2744;font-size:12px;font-weight:500">'+m[1]+'</td></tr>';
+  }).join('');
+
+  function sec(title,body,isRec){
+    var wrap=isRec?('<div style="background:#1a2744;padding:20px 24px;border-radius:8px">'+body.replace(/<p>/g,'<p style="font-size:13px;line-height:1.7;color:rgba(255,255,255,0.85);margin:0 0 8px">').replace(/<li>/g,'<li style="font-size:13px;line-height:1.65;color:rgba(255,255,255,0.85);margin-bottom:4px">')+'</div>'):body;
+    return '<div style="margin-top:28px"><div style="font-size:10px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:#b07d4a;margin-bottom:10px;padding-bottom:8px;border-bottom:2px solid #b07d4a">'+title+'</div>'+wrap+'</div>';
+  }
+
+  var baseStyles='font-size:13px;line-height:1.7;color:#2d3748;';
+  var html=
+    '<style>'+
+    '.memo-pdf p{'+baseStyles+'margin:0 0 8px}'+
+    '.memo-pdf ul{padding-left:1.2rem;margin:6px 0}'+
+    '.memo-pdf li{'+baseStyles+'margin-bottom:4px}'+
+    '.memo-pdf .subsec{font-size:12px;font-weight:600;color:#1a2744;text-transform:uppercase;letter-spacing:0.05em;margin:14px 0 5px}'+
+    '.memo-pdf .subsubsec{font-size:11px;font-weight:600;color:#4a5568;margin:10px 0 4px}'+
+    '.savepdf{position:fixed;bottom:24px;right:24px;background:#1a2744;color:#fff;border:none;border-radius:8px;padding:12px 20px;font-family:sans-serif;font-size:13px;font-weight:500;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,0.2);z-index:100}'+
+    '@media print{.savepdf{display:none!important}}'+
+    '</style>'+
+    '<div class="memo-pdf" style="font-family:Georgia,serif;color:#1a2744;max-width:800px;margin:0 auto">'+
+    '<div style="background:#1a2744;color:#fff;padding:48px 48px 36px">'+
+    '<div style="display:flex;gap:4px;align-items:center;margin-bottom:20px">'+
+    '<div style="width:7px;height:7px;border-radius:50%;background:#b07d4a"></div>'+
+    '<div style="width:7px;height:7px;border-radius:50%;background:#b07d4a"></div>'+
+    '<div style="width:7px;height:7px;border-radius:50%;background:#b07d4a"></div>'+
+    '<div style="width:7px;height:7px;border-radius:50%;background:#b07d4a"></div>'+
+    '<div style="width:7px;height:7px;border-radius:50%;background:#b07d4a"></div>'+
+    '<div style="width:8px;height:8px;background:#b07d4a;transform:rotate(45deg);margin-left:2px"></div>'+
+    '</div>'+
+    '<div style="font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.5);margin-bottom:16px">Investment Memorandum - Confidential</div>'+
+    '<div style="font-size:28px;font-weight:600;margin:0 0 6px;line-height:1.2;font-family:Georgia,serif">'+bizName+'</div>'+
+    '<div style="font-size:12px;color:rgba(255,255,255,0.6);margin-top:8px">'+industry+' &nbsp;|&nbsp; RAMOT Consulting Group &nbsp;|&nbsp; '+today+'</div>'+
+    '<div style="display:inline-flex;align-items:center;gap:12px;background:rgba(255,255,255,0.08);border-radius:8px;padding:10px 16px;margin-top:20px">'+
+    '<div style="width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:600;background:'+scoreBg+';color:'+scoreColor+'">'+score+'</div>'+
+    '<div><div style="font-size:14px;font-weight:500;color:#fff">'+verdict+'</div><div style="font-size:13px;color:rgba(255,255,255,0.7)">Overall deal score</div></div>'+
+    '</div>'+
+    '</div>'+
+    '<div style="padding:0 48px 48px;background:#fff">'+
+    sec('Executive Summary',md(sections['EXECUTIVE SUMMARY']||sections['Executive Summary']||''))+
+    '<div style="margin-top:28px"><div style="font-size:10px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:#b07d4a;margin-bottom:10px;padding-bottom:8px;border-bottom:2px solid #b07d4a">Deal Overview</div><table style="width:100%;border-collapse:collapse;border:1px solid #e2e8f0">'+mrows+'</table></div>'+
+    sec('Market Analysis',md(sections['MARKET ANALYSIS']||sections['Market Analysis']||''))+
+    sec('Financial Analysis',md(sections['FINANCIAL ANALYSIS']||sections['Financial Analysis']||''))+
+    sec('Comparable Transactions',md(sections['COMPARABLE TRANSACTIONS']||sections['Comparable Transactions']||''))+
+    sec('Investment Thesis',md(sections['INVESTMENT THESIS']||sections['Investment Thesis']||''))+
+    sec('Key Risks & Mitigants',md(sections['KEY RISKS & MITIGANTS']||sections['Key Risks & Mitigants']||''))+
+    sec('Recommendation',md(sections['RECOMMENDATION']||sections['Recommendation']||''),true)+
+    '</div>'+
+    '<div style="background:#f8f4ee;padding:16px 48px;display:flex;justify-content:space-between;align-items:center;border-top:1px solid #e2e8f0">'+
+    '<div style="display:flex;align-items:center;gap:8px">'+
+    '<div style="display:flex;gap:3px;align-items:center">'+
+    '<div style="width:5px;height:5px;border-radius:50%;background:#b07d4a"></div>'+
+    '<div style="width:5px;height:5px;border-radius:50%;background:#b07d4a"></div>'+
+    '<div style="width:5px;height:5px;border-radius:50%;background:#b07d4a"></div>'+
+    '<div style="width:5px;height:5px;border-radius:50%;background:#b07d4a"></div>'+
+    '<div style="width:5px;height:5px;border-radius:50%;background:#b07d4a"></div>'+
+    '</div>'+
+    '<span style="font-family:sans-serif;font-size:13px;font-weight:500;color:#1a2744">RAMOT Consulting Group</span></div>'+
+    '<span style="font-size:11px;color:#8a96a8">Confidential - For internal use only</span>'+
+    '</div>'+
+    '</div>'+
+    '<button class="savepdf" onclick="printMemo()">Save as PDF</button>';
+
+  document.getElementById('memo-out').innerHTML=html;
+}
+
+function printMemo(){
+  var style=document.createElement('style');
+  style.id='pstyle';
+  style.textContent='@media print{#gate,#app > .topbar,#app > .nav,.btnp,.btns,.nb,.signout,#memobtn,#cim-up,#cim-load,.ctabs,.cpanel,.dhead,#pg-calc,.psub,.ptitle{display:none!important}#app{display:block!important}#pg-cim{display:block!important}#cim-res{display:block!important}#memo-out{display:block!important}.savepdf{display:none!important}body{background:#fff!important}.memo-pdf{max-width:none!important}@page{margin:0;size:letter portrait}}';
+  document.head.appendChild(style);
+  window.print();
+  setTimeout(function(){var s=document.getElementById('pstyle');if(s)s.remove();},3000);
+}
+
+</script>
 </body>
-</html>' >> /home/claude/ramot-final/index.html
-
-echo "Done. File size: $(wc -c < /home/claude/ramot-final/index.html)"
-
-# Validate the JS portion
-python3 << 'PYEOF'
-with open('/home/claude/ramot-final/index.html', 'r') as f:
-    content = f.read()
-s = content.find('<script>\n') + 8
-e = content.rfind('\n</script>')
-with open('/tmp/finaltest.js', 'w') as f:
-    f.write(content[s:e])
-print("gate:", content.count('id="gate"'))
-print("app:", content.count('id="app"'))
-print("RAMOT6:", 'RAMOT6' in content)
-print("gateSubmit:", 'function gateSubmit()' in content)
-print("genMemo:", 'async function genMemo()' in content)
-print("buildMemoPDF:", 'function buildMemoPDF' in content)
-print("printMemo:", 'function printMemo()' in content)
-PYEOF
-node --check /tmp/finaltest.js 2>&1
+</html>
