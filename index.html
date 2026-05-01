@@ -5,300 +5,206 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>RAMOT Deal Tools</title>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js">
-// INVESTMENT MEMO GENERATOR
-async function generateMemo(){
-  document.getElementById('gen-memo-btn').disabled=true;
-  document.getElementById('memo-loading').style.display='block';
-  document.getElementById('memo-output').style.display='none';
-
-  // Collect CIM analysis data
-  var bizName=document.getElementById('cr-n').textContent;
-  var industry=document.getElementById('cr-m').textContent.split(' · ')[0]||'';
-  var score=document.getElementById('cr-b').textContent;
-  var verdict=document.getElementById('cr-v').textContent;
-
-  // Collect snapshot data
-  var snapRows=document.querySelectorAll('#cr-snap tr');
-  var snapData={};
-  snapRows.forEach(function(r){var cells=r.querySelectorAll('td');if(cells.length===2)snapData[cells[0].textContent]=cells[1].textContent;});
-
-  // Collect financial data
-  var finRows=document.querySelectorAll('#cr-ft tr');
-  var finData={};
-  finRows.forEach(function(r){var cells=r.querySelectorAll('td');if(cells.length===2)finData[cells[0].textContent]=cells[1].textContent;});
-
-  // Collect strengths and risks
-  var strengths=[];document.querySelectorAll('#cr-str li span:last-child').forEach(function(s){strengths.push(s.textContent);});
-  var risks=[];document.querySelectorAll('#cr-risk li span:last-child').forEach(function(s){risks.push(s.textContent);});
-  var ddItems=[];document.querySelectorAll('#cr-dd li span:last-child').forEach(function(s){ddItems.push(s.textContent);});
-  var sbaAnalysis=document.getElementById('cr-da').textContent;
-  var mktContext=document.getElementById('cr-mkt').textContent;
-  var finNotes=document.getElementById('cr-fn').textContent;
-  var benchComp=document.getElementById('cr-bc').textContent;
-
-  document.getElementById('memo-prog').style.width='15%';
-  document.getElementById('memo-l-msg').textContent='Researching market data...';
-
-  var prompt='You are a senior PE associate at RAMOT Consulting Group preparing an Investment Memo for the Managing Director.\n\nCIM ANALYSIS DATA:\nBusiness: '+bizName+'\nIndustry: '+industry+'\nDeal Score: '+score+'/100 — '+verdict+'\nAsking Price: '+(snapData['Asking price']||'Not disclosed')+'\nRevenue: '+(snapData['Revenue']||'Not disclosed')+'\nSDE: '+(snapData['SDE']||'Not disclosed')+'\nEmployees: '+(snapData['Employees']||'Not disclosed')+'\nYears Operating: '+(snapData['Years operating']||'Not disclosed')+'\nReason for Sale: '+(snapData['Reason for sale']||'Not disclosed')+'\nCustomer Concentration: '+(snapData['Customer concentration']||'Not disclosed')+'\nRevenue Y1: '+(finData['Revenue Y1']||'Not disclosed')+'\nRevenue Y2: '+(finData['Revenue Y2']||'Not disclosed')+'\nRevenue Y3: '+(finData['Revenue Y3']||'Not disclosed')+'\nAdj SDE: '+(finData['Adj SDE']||'Not disclosed')+'\nSBA Analysis: '+sbaAnalysis+'\nMarket Context: '+mktContext+'\nFinancial Notes: '+finNotes+'\nBenchmark Comparison: '+benchComp+'\nKey Strengths: '+strengths.join('; ')+'\nKey Risks: '+risks.join('; ')+'\nDue Diligence Items: '+ddItems.join('; ')+'\n\nUsing the above CIM data AND your knowledge of the '+industry+' industry, write a comprehensive Investment Memo. Use web search context for current market data, industry trends, TAM estimates, and comparable transactions.\n\nWrite the memo in this exact structure with these exact section headers:\n\n# INVESTMENT MEMORANDUM\n## '+bizName+'\n*Prepared by RAMOT Consulting Group*\n\n---\n\n## EXECUTIVE SUMMARY\n[3-4 sentences: deal overview, key metrics, recommendation]\n\n## DEAL OVERVIEW\n[Table or bullet list of key deal terms: asking price, revenue, SDE, employees, years operating, deal structure, reason for sale]\n\n## MARKET ANALYSIS\n### Industry Overview & TAM\n[Industry size, growth rate, TAM estimate with source context]\n\n### Growth Drivers\n[3-5 key tailwinds for this industry]\n\n### Headwinds & Challenges\n[3-4 key risks or headwinds facing the industry]\n\n### Competitive Landscape\n[Who are the major players, market fragmentation, competitive dynamics]\n\n### Customer & Demand Analysis\n[Who buys this, why, switching costs, demand stability]\n\n## FINANCIAL ANALYSIS\n[Revenue trend analysis, margin profile, quality of earnings, add-back assessment]\n\n## COMPARABLE TRANSACTIONS\n[Recent comparable deals in this industry/sector, multiples paid, strategic vs financial buyers]\n\n## INVESTMENT THESIS\n[3-5 bullet points on why this is an attractive investment opportunity]\n\n## KEY RISKS & MITIGANTS\n[Table or structured list: Risk | Severity | Mitigant]\n\n## RECOMMENDATION\n[Clear recommendation: Pass / Proceed to LOI / Request Additional Information — with rationale]\n\nWrite in professional PE memo style. Be specific with numbers where available. For market data, provide estimates with ranges where exact figures are unavailable. This memo will be presented to the Managing Director.';
-
-  try{
-    document.getElementById('memo-prog').style.width='40%';
-    var resp=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':AK,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({
-        model:'claude-sonnet-4-5',
-        max_tokens:8192,
-        messages:[{role:'user',content:prompt}]
-      })
-    });
-    var data=await resp.json();
-    if(!resp.ok)throw new Error(data.error&&data.error.message?data.error.message:'Error '+resp.status);
-    var raw=data.content.filter(function(b){return b.type==='text';}).map(function(b){return b.text;}).join('');
-
-    document.getElementById('memo-prog').style.width='90%';
-    document.getElementById('memo-l-msg').textContent='Formatting memo...';
-
-    // Render markdown-style memo as HTML
-    var html=raw
-      .replace(/^# (.+)$/gm,'<h1 style="font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:600;color:var(--navy);margin:0 0 4px">$1</h1>')
-      .replace(/^## (.+)$/gm,'<h2 style="font-family:'Cormorant Garamond',serif;font-size:19px;font-weight:600;color:var(--navy);margin:20px 0 8px;padding-top:16px;border-top:1px solid var(--border)">$2</h2>')
-      .replace(/^### (.+)$/gm,'<h3 style="font-size:13px;font-weight:600;color:var(--text-mid);text-transform:uppercase;letter-spacing:0.05em;margin:14px 0 6px">$1</h3>')
-      .replace(/^\*(.+)\*$/gm,'<p style="font-size:12px;color:var(--text-light);margin-bottom:12px">$1</p>')
-      .replace(/^---$/gm,'<hr style="border:none;border-top:1px solid var(--border);margin:8px 0">')
-      .replace(/^\* (.+)$/gm,'<li style="font-size:13px;color:var(--text);line-height:1.6;margin-bottom:4px">$1</li>')
-      .replace(/^- (.+)$/gm,'<li style="font-size:13px;color:var(--text);line-height:1.6;margin-bottom:4px">$1</li>')
-      .replace(/(<li[^>]*>.*<\/li>
-?)+/g,'<ul style="padding-left:1.2rem;margin:6px 0">$&</ul>')
-      .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
-      .replace(/
-
-/g,'</p><p style="font-size:13px;color:var(--text);line-height:1.65;margin-bottom:8px">')
-      .replace(/
-/g,'<br>');
-
-    html='<p style="font-size:13px;color:var(--text);line-height:1.65;margin-bottom:8px">'+html+'</p>';
-
-    document.getElementById('memo-prog').style.width='100%';
-    document.getElementById('memo-loading').style.display='none';
-    document.getElementById('memo-output').style.display='block';
-    document.getElementById('memo-output').innerHTML=
-      '<div class="card" style="padding:1.5rem 2rem">'+
-      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">'+
-      '<div style="font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em">Investment Memorandum — RAMOT Consulting Group</div>'+
-      '<button onclick="printMemo()" style="height:32px;padding:0 12px;background:var(--navy);color:var(--white);border:none;border-radius:var(--r);font-family:'Jost',sans-serif;font-size:12px;cursor:pointer">Export / Print</button>'+
-      '</div>'+
-      html+
-      '</div>';
-
-    document.getElementById('gen-memo-btn').disabled=false;
-  }catch(e){
-    document.getElementById('memo-loading').style.display='none';
-    document.getElementById('memo-output').style.display='block';
-    document.getElementById('memo-output').innerHTML='<div class="err-box">Failed to generate memo: '+e.message+'</div>';
-    document.getElementById('gen-memo-btn').disabled=false;
-  }
-}
-
-function printMemo(){
-  var content=document.getElementById('memo-output').innerHTML;
-  var win=window.open('','_blank');
-  win.document.write('<html><head><title>Investment Memo — RAMOT Consulting Group</title><style>body{font-family:Georgia,serif;max-width:800px;margin:40px auto;padding:0 20px;color:#1a2744}h1{font-size:26px;margin-bottom:4px}h2{font-size:18px;border-top:1px solid #ddd;padding-top:14px;margin-top:20px}h3{font-size:13px;text-transform:uppercase;letter-spacing:0.05em;color:#666;margin-top:12px}ul{padding-left:1.2rem}li{line-height:1.6;margin-bottom:3px}p{line-height:1.65;margin-bottom:8px}hr{border:none;border-top:1px solid #ddd;margin:8px 0}@media print{body{margin:20px}}</style></head><body>'+content+'</body></html>');
-  win.document.close();
-  win.print();
-}
-</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
-:root{--navy:#1a2744;--navy-light:#243460;--copper:#b07d4a;--cream:#f8f4ee;--white:#fff;--text:#1a2744;--text-mid:#4a5568;--text-light:#8a96a8;--border:rgba(26,39,68,0.12);--border-mid:rgba(26,39,68,0.22);--success:#2d6a4f;--success-bg:#d8f3dc;--warning:#7d5a00;--warning-bg:#fff3cd;--danger:#7d1a1a;--danger-bg:#fde8e8;--r:8px;--rl:12px}
+:root{--navy:#1a2744;--nl:#243460;--copper:#b07d4a;--cream:#f8f4ee;--white:#fff;--text:#1a2744;--tm:#4a5568;--tl:#8a96a8;--b:rgba(26,39,68,0.12);--bm:rgba(26,39,68,0.22);--sg:#2d6a4f;--sbg:#d8f3dc;--sw:#7d5a00;--swbg:#fff3cd;--sd:#7d1a1a;--sdbg:#fde8e8;--r:8px;--rl:12px}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Jost',sans-serif;background:var(--cream);color:var(--text);min-height:100vh}
 #gate{position:fixed;inset:0;background:var(--navy);display:flex;align-items:center;justify-content:center;z-index:1000;padding:1rem}
 #app{display:none;min-height:100vh;flex-direction:column}
-.gate-box{background:var(--white);border-radius:var(--rl);padding:2.5rem 2rem;width:100%;max-width:360px;text-align:center}
-.g-dots{display:flex;gap:4px;align-items:center;justify-content:center;margin-bottom:6px}
-.g-dot{width:8px;height:8px;border-radius:50%;background:var(--copper)}
-.g-diamond{width:9px;height:9px;background:var(--copper);transform:rotate(45deg);margin-left:2px}
-.g-name{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;color:var(--navy);letter-spacing:0.05em;margin-bottom:4px}
-.g-tagline{font-size:11px;color:var(--text-light);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:1.75rem}
-.g-label{font-size:13px;color:var(--text-mid);margin-bottom:10px}
-.g-input{width:100%;height:46px;border:1px solid var(--border-mid);border-radius:var(--r);padding:0 14px;font-family:'Jost',sans-serif;font-size:16px;color:var(--text);background:var(--cream);letter-spacing:0.15em;text-align:center;outline:none}
-.g-input:focus{border-color:var(--copper);background:var(--white)}
-.g-btn{width:100%;height:46px;background:var(--navy);color:var(--white);border:none;border-radius:var(--r);font-family:'Jost',sans-serif;font-size:14px;font-weight:500;cursor:pointer;margin-top:10px}
-.g-btn:hover{background:var(--navy-light)}
-.g-err{font-size:12px;color:var(--danger);margin-top:8px;min-height:18px}
+.gb{background:var(--white);border-radius:var(--rl);padding:2.5rem 2rem;width:100%;max-width:380px;text-align:center}
+.gd{display:flex;gap:4px;align-items:center;justify-content:center;margin-bottom:6px}
+.gdot{width:8px;height:8px;border-radius:50%;background:var(--copper)}
+.gdiam{width:9px;height:9px;background:var(--copper);transform:rotate(45deg);margin-left:2px}
+.gname{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;color:var(--navy);letter-spacing:0.05em;margin-bottom:4px}
+.gtag{font-size:11px;color:var(--tl);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:1.5rem}
+.glabel{font-size:12px;color:var(--tm);margin-bottom:5px;text-align:left}
+.ginput{width:100%;height:44px;border:1px solid var(--bm);border-radius:var(--r);padding:0 14px;font-family:'Jost',sans-serif;font-size:15px;color:var(--text);background:var(--cream);outline:none;margin-bottom:10px}
+.ginput:focus{border-color:var(--copper);background:var(--white)}
+.gbtn{width:100%;height:44px;background:var(--navy);color:var(--white);border:none;border-radius:var(--r);font-family:'Jost',sans-serif;font-size:14px;font-weight:500;cursor:pointer;margin-top:4px}
+.gbtn:hover{background:var(--nl)}
+.gerr{font-size:12px;color:var(--sd);margin-top:8px;min-height:18px}
 .topbar{background:var(--navy);padding:0 1.5rem;height:54px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
-.tb-left{display:flex;align-items:center;gap:10px}
-.tb-dots{display:flex;gap:3px;align-items:center}
-.tb-dot{width:6px;height:6px;border-radius:50%;background:var(--copper)}
-.tb-diamond{width:7px;height:7px;background:var(--copper);transform:rotate(45deg);margin-left:1px}
-.tb-name{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:600;color:var(--white);letter-spacing:0.06em}
-.tb-sep{width:1px;height:14px;background:rgba(255,255,255,0.2);margin:0 10px}
-.tb-sub{font-size:11px;color:rgba(255,255,255,0.45)}
-.logout{background:none;border:1px solid rgba(255,255,255,0.2);color:rgba(255,255,255,0.55);font-family:'Jost',sans-serif;font-size:11px;padding:5px 11px;border-radius:var(--r);cursor:pointer}
-.nav{background:var(--white);border-bottom:1px solid var(--border);display:flex;padding:0 1.5rem}
-.nav-btn{padding:14px 18px;font-size:13px;font-weight:500;color:var(--text-light);cursor:pointer;border-bottom:2px solid transparent;background:none;border-top:none;border-left:none;border-right:none;font-family:'Jost',sans-serif}
-.nav-btn.active{color:var(--navy);border-bottom-color:var(--copper)}
+.tbl{display:flex;align-items:center;gap:10px}
+.tbdots{display:flex;gap:3px;align-items:center}
+.tbdot{width:6px;height:6px;border-radius:50%;background:var(--copper)}
+.tbdiam{width:7px;height:7px;background:var(--copper);transform:rotate(45deg);margin-left:1px}
+.tbname{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:600;color:var(--white);letter-spacing:0.06em}
+.tbsep{width:1px;height:14px;background:rgba(255,255,255,0.2);margin:0 10px}
+.tbsub{font-size:11px;color:rgba(255,255,255,0.45)}
+.signout{background:none;border:1px solid rgba(255,255,255,0.2);color:rgba(255,255,255,0.55);font-family:'Jost',sans-serif;font-size:11px;padding:5px 11px;border-radius:var(--r);cursor:pointer}
+.signout:hover{color:var(--white);border-color:rgba(255,255,255,0.5)}
+.nav{background:var(--white);border-bottom:1px solid var(--b);display:flex;padding:0 1.5rem}
+.nb{padding:14px 18px;font-size:13px;font-weight:500;color:var(--tl);cursor:pointer;border-bottom:2px solid transparent;background:none;border-top:none;border-left:none;border-right:none;font-family:'Jost',sans-serif}
+.nb.on{color:var(--navy);border-bottom-color:var(--copper)}
 .main{max-width:1080px;margin:0 auto;padding:1.75rem 1.5rem;flex:1}
-.page{display:none}.page.active{display:block}
-.page-title{font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:600;color:var(--navy);margin-bottom:4px}
-.page-sub{font-size:12px;color:var(--text-light);margin-bottom:1.5rem}
-.card{background:var(--white);border:1px solid var(--border);border-radius:var(--rl);padding:1.2rem;margin-bottom:10px}
-.ct{font-size:10px;font-weight:500;color:var(--text-light);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px}
+.pg{display:none}.pg.on{display:block}
+.ptitle{font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:600;color:var(--navy);margin-bottom:4px}
+.psub{font-size:12px;color:var(--tl);margin-bottom:1.5rem}
+.card{background:var(--white);border:1px solid var(--b);border-radius:var(--rl);padding:1.2rem;margin-bottom:10px}
+.ct{font-size:10px;font-weight:500;color:var(--tl);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px}
 .field{margin-bottom:8px}
-.field label{display:block;font-size:12px;color:var(--text-mid);margin-bottom:3px;font-weight:500}
-.field input,.field select{width:100%;height:35px;padding:0 10px;border:1px solid var(--border-mid);border-radius:var(--r);font-family:'Jost',sans-serif;font-size:13px;color:var(--text);background:var(--cream);outline:none}
+.field label{display:block;font-size:12px;color:var(--tm);margin-bottom:3px;font-weight:500}
+.field input,.field select{width:100%;height:35px;padding:0 10px;border:1px solid var(--bm);border-radius:var(--r);font-family:'Jost',sans-serif;font-size:13px;color:var(--text);background:var(--cream);outline:none}
 .field input:focus,.field select:focus{border-color:var(--copper);background:var(--white)}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .ttabs{display:flex;gap:4px;margin-bottom:10px}
-.ttab{flex:1;height:30px;border:1px solid var(--border-mid);border-radius:var(--r);background:var(--white);color:var(--text-mid);font-family:'Jost',sans-serif;font-size:12px;cursor:pointer}
+.ttab{flex:1;height:30px;border:1px solid var(--bm);border-radius:var(--r);background:var(--white);color:var(--tm);font-family:'Jost',sans-serif;font-size:12px;cursor:pointer}
 .ttab.on{background:var(--navy);color:var(--white);border-color:var(--navy)}
-.btn-primary{height:38px;background:var(--navy);color:var(--white);border:none;border-radius:var(--r);font-family:'Jost',sans-serif;font-size:13px;font-weight:500;cursor:pointer;padding:0 1.25rem}
-.btn-secondary{height:38px;background:var(--white);color:var(--text-mid);border:1px solid var(--border-mid);border-radius:var(--r);font-family:'Jost',sans-serif;font-size:13px;cursor:pointer;padding:0 1.25rem}
-.btn-row{display:flex;gap:8px;margin-top:10px}
-.add-link{background:none;border:none;color:var(--copper);font-family:'Jost',sans-serif;font-size:12px;cursor:pointer;padding:3px 0;display:block}
-.extra-row{display:flex;gap:5px;margin-top:5px;align-items:center}
-.extra-row input{flex:1;height:30px;padding:0 8px;border:1px solid var(--border-mid);border-radius:var(--r);font-family:'Jost',sans-serif;font-size:12px;background:var(--cream);outline:none}
-.rm-btn{width:24px;height:24px;border:1px solid var(--border-mid);border-radius:4px;background:none;color:var(--text-light);cursor:pointer;font-size:14px;flex-shrink:0}
-.divider{height:1px;background:var(--border);margin:10px 0}
-.calc-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
-@media(max-width:700px){.calc-grid{grid-template-columns:1fr}}
+.btnp{height:38px;background:var(--navy);color:var(--white);border:none;border-radius:var(--r);font-family:'Jost',sans-serif;font-size:13px;font-weight:500;cursor:pointer;padding:0 1.25rem}
+.btnp:hover{background:var(--nl)}
+.btns{height:38px;background:var(--white);color:var(--tm);border:1px solid var(--bm);border-radius:var(--r);font-family:'Jost',sans-serif;font-size:13px;cursor:pointer;padding:0 1.25rem}
+.btnrow{display:flex;gap:8px;margin-top:10px}
+.addlink{background:none;border:none;color:var(--copper);font-family:'Jost',sans-serif;font-size:12px;cursor:pointer;padding:3px 0;display:block}
+.xrow{display:flex;gap:5px;margin-top:5px;align-items:center}
+.xrow input{flex:1;height:30px;padding:0 8px;border:1px solid var(--bm);border-radius:var(--r);font-family:'Jost',sans-serif;font-size:12px;background:var(--cream);outline:none}
+.rmbtn{width:24px;height:24px;border:1px solid var(--bm);border-radius:4px;background:none;color:var(--tl);cursor:pointer;font-size:14px;flex-shrink:0}
+.divider{height:1px;background:var(--b);margin:10px 0}
+.cgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+@media(max-width:700px){.cgrid{grid-template-columns:1fr}}
 .mg{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:10px}
 .m{background:var(--cream);border-radius:var(--r);padding:9px 11px}
-.ml{font-size:10px;color:var(--text-light);margin-bottom:2px}
+.ml{font-size:10px;color:var(--tl);margin-bottom:2px}
 .mv{font-size:15px;font-weight:500;color:var(--text)}
-.mv-sub{font-size:10px;color:var(--text-light);margin-top:1px}
-.mv.good{color:var(--success)}.mv.warn{color:var(--warning)}.mv.bad{color:var(--danger)}
-.dscr-bar{height:4px;background:var(--border);border-radius:2px;margin-top:5px;overflow:hidden}
-.dscr-fill{height:100%;border-radius:2px}
-.ms{font-size:10px;color:var(--text-light);margin-top:2px}
+.mvs{font-size:10px;color:var(--tl);margin-top:1px}
+.mv.good{color:var(--sg)}.mv.warn{color:var(--sw)}.mv.bad{color:var(--sd)}
+.dscrbar{height:4px;background:var(--b);border-radius:2px;margin-top:5px;overflow:hidden}
+.dscrfill{height:100%;border-radius:2px}
+.ms{font-size:10px;color:var(--tl);margin-top:2px}
 .kv{width:100%;font-size:13px;border-collapse:collapse}
 .kv td{padding:5px 0;vertical-align:top}
-.kv td:first-child{color:var(--text-mid);width:48%;padding-right:10px}
+.kv td:first-child{color:var(--tm);width:48%;padding-right:10px}
 .kv td:last-child{color:var(--text);font-weight:500}
-.kv tr:not(:last-child) td{border-bottom:1px solid var(--border)}
-.flag-list{list-style:none;display:flex;flex-direction:column;gap:5px}
-.flag{display:flex;gap:8px;align-items:flex-start;font-size:12px;padding:7px 9px;border-radius:var(--r);line-height:1.5}
-.flag.green{background:var(--success-bg);color:var(--success)}
-.flag.amber{background:var(--warning-bg);color:var(--warning)}
-.flag.red{background:var(--danger-bg);color:var(--danger)}
+.kv tr:not(:last-child) td{border-bottom:1px solid var(--b)}
+.fl{list-style:none;display:flex;flex-direction:column;gap:5px}
+.fi{display:flex;gap:8px;align-items:flex-start;font-size:12px;padding:7px 9px;border-radius:var(--r);line-height:1.5}
+.fi.green{background:var(--sbg);color:var(--sg)}.fi.amber{background:var(--swbg);color:var(--sw)}.fi.red{background:var(--sdbg);color:var(--sd)}
 .fdot{width:5px;height:5px;border-radius:50%;flex-shrink:0;margin-top:5px}
-.flag.green .fdot{background:var(--success)}.flag.amber .fdot{background:#b07d00}.flag.red .fdot{background:var(--danger)}
-.cim-tabs{display:flex;gap:2px;border-bottom:1px solid var(--border);margin-bottom:12px}
-.cim-tab{padding:8px 15px;font-size:13px;color:var(--text-light);background:none;border:none;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;font-family:'Jost',sans-serif;font-weight:500}
-.cim-tab.active{color:var(--navy);border-bottom-color:var(--copper)}
-.cim-panel{display:none}.cim-panel.active{display:block}
-.upload-zone{border:2px dashed var(--border-mid);border-radius:var(--rl);padding:2rem 1.5rem;text-align:center;cursor:pointer;background:var(--cream)}
-.upload-zone:hover{border-color:var(--copper)}
-.upload-zone input{display:none}
-.uz-label{font-size:14px;color:var(--text);margin-bottom:3px}
-.uz-sub{font-size:12px;color:var(--text-light)}
-.file-chip{display:inline-flex;align-items:center;gap:7px;background:var(--white);border:1px solid var(--border);border-radius:var(--r);padding:5px 11px;margin-top:8px;font-size:12px}
-.file-chip button{background:none;border:none;color:var(--text-light);cursor:pointer;font-size:15px;line-height:1}
+.fi.green .fdot{background:var(--sg)}.fi.amber .fdot{background:#b07d00}.fi.red .fdot{background:var(--sd)}
+.ctabs{display:flex;gap:2px;border-bottom:1px solid var(--b);margin-bottom:12px}
+.ctab{padding:8px 15px;font-size:13px;color:var(--tl);background:none;border:none;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;font-family:'Jost',sans-serif;font-weight:500}
+.ctab.on{color:var(--navy);border-bottom-color:var(--copper)}
+.cpanel{display:none}.cpanel.on{display:block}
+.upzone{border:2px dashed var(--bm);border-radius:var(--rl);padding:2rem 1.5rem;text-align:center;cursor:pointer;background:var(--cream)}
+.upzone:hover{border-color:var(--copper)}
+.upzone input{display:none}
+.uzlabel{font-size:14px;color:var(--text);margin-bottom:3px}
+.uzsub{font-size:12px;color:var(--tl)}
+.fchip{display:inline-flex;align-items:center;gap:7px;background:var(--white);border:1px solid var(--b);border-radius:var(--r);padding:5px 11px;margin-top:8px;font-size:12px}
+.fchip button{background:none;border:none;color:var(--tl);cursor:pointer;font-size:15px;line-height:1}
 .loading{text-align:center;padding:3rem 1rem}
-.spinner{width:30px;height:30px;border:2px solid var(--border);border-top-color:var(--copper);border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 12px}
+.spinner{width:30px;height:30px;border:2px solid var(--b);border-top-color:var(--copper);border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 12px}
 @keyframes spin{to{transform:rotate(360deg)}}
-.l-msg{font-size:14px;color:var(--text);margin-bottom:3px}
-.l-sub{font-size:12px;color:var(--text-light)}
-.prog{height:3px;background:var(--border);border-radius:2px;margin-top:10px;overflow:hidden}
-.prog-fill{height:100%;background:var(--copper);border-radius:2px;transition:width 0.5s}
-.deal-header{background:var(--navy);border-radius:var(--rl);padding:1.2rem 1.4rem;margin-bottom:10px;color:var(--white)}
-.dh-name{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600}
-.dh-meta{font-size:12px;color:rgba(255,255,255,0.5);margin-top:2px}
-.dh-score-row{display:flex;align-items:center;gap:12px;margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.12)}
-.score-badge{width:50px;height:50px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:500;flex-shrink:0}
-.score-badge.strong{background:var(--success-bg);color:var(--success)}
-.score-badge.moderate{background:var(--warning-bg);color:var(--warning)}
-.score-badge.weak{background:var(--danger-bg);color:var(--danger)}
-.dh-verdict{font-size:14px;font-weight:500}.dh-rationale{font-size:12px;color:rgba(255,255,255,0.55);margin-top:2px}
-.bm-ctx{font-size:12px;color:var(--text-mid);line-height:1.6}
-.err-box{background:var(--danger-bg);border-radius:var(--r);padding:10px 12px;font-size:13px;color:var(--danger);margin-top:8px}
-.sba-pill{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:500;margin-bottom:10px}
-.sba-pill.yes{background:var(--success-bg);color:var(--success)}.sba-pill.no{background:var(--danger-bg);color:var(--danger)}.sba-pill.maybe{background:var(--warning-bg);color:var(--warning)}
-.reset-link{background:none;border:none;color:var(--copper);font-family:'Jost',sans-serif;font-size:13px;cursor:pointer;padding:0;margin-top:8px;display:inline-block}
+.lmsg{font-size:14px;color:var(--text);margin-bottom:3px}
+.lsub{font-size:12px;color:var(--tl)}
+.prog{height:3px;background:var(--b);border-radius:2px;margin-top:10px;overflow:hidden}
+.progfill{height:100%;background:var(--copper);border-radius:2px;transition:width 0.5s}
+.dhead{background:var(--navy);border-radius:var(--rl);padding:1.2rem 1.4rem;margin-bottom:10px;color:var(--white)}
+.dhn{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600}
+.dhm{font-size:12px;color:rgba(255,255,255,0.5);margin-top:2px}
+.dhsr{display:flex;align-items:center;gap:12px;margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.12)}
+.sbadge{width:50px;height:50px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:500;flex-shrink:0}
+.sbadge.strong{background:var(--sbg);color:var(--sg)}.sbadge.moderate{background:var(--swbg);color:var(--sw)}.sbadge.weak{background:var(--sdbg);color:var(--sd)}
+.dhv{font-size:14px;font-weight:500}.dhr{font-size:12px;color:rgba(255,255,255,0.55);margin-top:2px}
+.bmctx{font-size:12px;color:var(--tm);line-height:1.6}
+.errbox{background:var(--sdbg);border-radius:var(--r);padding:10px 12px;font-size:13px;color:var(--sd);margin-top:8px}
+.sbapill{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:500;margin-bottom:10px}
+.sbapill.yes{background:var(--sbg);color:var(--sg)}.sbapill.no{background:var(--sdbg);color:var(--sd)}.sbapill.maybe{background:var(--swbg);color:var(--sw)}
 .prose{font-size:13px;color:var(--text);line-height:1.65}
+.memo-section h1{font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:600;color:var(--navy);margin:0 0 4px}
+.memo-section h2{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:600;color:var(--navy);margin:20px 0 8px;padding-top:16px;border-top:1px solid var(--b)}
+.memo-section h3{font-size:12px;font-weight:600;color:var(--tm);text-transform:uppercase;letter-spacing:0.05em;margin:12px 0 5px}
+.memo-section p{font-size:13px;color:var(--text);line-height:1.65;margin-bottom:8px}
+.memo-section ul{padding-left:1.2rem;margin:6px 0}
+.memo-section li{font-size:13px;color:var(--text);line-height:1.6;margin-bottom:3px}
+.memo-section strong{font-weight:600}
+.memo-section hr{border:none;border-top:1px solid var(--b);margin:8px 0}
+.memo-section table{width:100%;border-collapse:collapse;font-size:13px;margin:8px 0}
+.memo-section th{text-align:left;padding:6px 8px;background:var(--cream);color:var(--tm);font-weight:500;border-bottom:1px solid var(--bm)}
+.memo-section td{padding:6px 8px;border-bottom:1px solid var(--b);color:var(--text)}
 </style>
 </head>
 <body>
 
-<div id="gate" style="position:fixed;inset:0;background:#1a2744;display:flex;align-items:center;justify-content:center;z-index:1000;padding:1rem">
-  <div class="gate-box">
-    <div class="g-dots"><div class="g-dot"></div><div class="g-dot"></div><div class="g-dot"></div><div class="g-dot"></div><div class="g-dot"></div><div class="g-diamond"></div></div>
-    <div class="g-name">RAMOT</div>
-    <div class="g-tagline">Consulting Group — Deal Tools</div>
-    <div class="g-label">Enter your access code</div>
-    <input class="g-input" type="password" id="g-code" placeholder="Access code" onkeydown="if(event.key==='Enter')gateSubmit()" style="margin-bottom:10px">
-    <div class="g-label" style="margin-top:8px">Enter your Anthropic API key</div>
-    <input class="g-input" type="password" id="g-apikey" placeholder="sk-ant-..." onkeydown="if(event.key==='Enter')gateSubmit()">
-    <button class="g-btn" onclick="gateSubmit()">Access Tools</button>
-    <div class="g-err" id="g-err"></div>
+<div id="gate">
+  <div class="gb">
+    <div class="gd"><div class="gdot"></div><div class="gdot"></div><div class="gdot"></div><div class="gdot"></div><div class="gdot"></div><div class="gdiam"></div></div>
+    <div class="gname">RAMOT</div>
+    <div class="gtag">Consulting Group — Deal Tools</div>
+    <div class="glabel">Access code</div>
+    <input class="ginput" type="password" id="gcode" placeholder="••••••" onkeydown="if(event.key==='Enter')document.getElementById('gapikey').focus()">
+    <div class="glabel">Anthropic API key</div>
+    <input class="ginput" type="password" id="gapikey" placeholder="sk-ant-..." onkeydown="if(event.key==='Enter')gateSubmit()">
+    <button class="gbtn" onclick="gateSubmit()">Access Tools</button>
+    <div class="gerr" id="gerr"></div>
   </div>
 </div>
 
-<div id="app" style="display:none;min-height:100vh;flex-direction:column">
+<div id="app">
   <div class="topbar">
-    <div class="tb-left">
-      <div class="tb-dots"><div class="tb-dot"></div><div class="tb-dot"></div><div class="tb-dot"></div><div class="tb-dot"></div><div class="tb-dot"></div><div class="tb-diamond"></div></div>
-      <div class="tb-name">RAMOT</div><div class="tb-sep"></div><div class="tb-sub">Deal Tools</div>
+    <div class="tbl">
+      <div class="tbdots"><div class="tbdot"></div><div class="tbdot"></div><div class="tbdot"></div><div class="tbdot"></div><div class="tbdot"></div><div class="tbdiam"></div></div>
+      <div class="tbname">RAMOT</div><div class="tbsep"></div><div class="tbsub">Deal Tools</div>
     </div>
-    <button class="logout" onclick="logout()">Sign out</button>
+    <button class="signout" onclick="signOut()">Sign out</button>
   </div>
   <div class="nav">
-    <button class="nav-btn active" onclick="nav('calc',this)">Deal Calculator</button>
-    <button class="nav-btn" onclick="nav('cim',this)">CIM Analyzer</button>
+    <button class="nb on" onclick="showPg('calc',this)">Deal Calculator</button>
+    <button class="nb" onclick="showPg('cim',this)">CIM Analyzer</button>
   </div>
   <div class="main">
 
-    <div class="page active" id="page-calc">
+    <!-- DEAL CALCULATOR -->
+    <div class="pg on" id="pg-calc">
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:1.25rem">
-        <div><div class="page-title">Deal Calculator</div><div class="page-sub" style="margin-bottom:0">Analyze financing, DSCR, and valuation multiples</div></div>
-        <div style="display:flex;gap:8px"><button class="btn-primary" onclick="calc()">Calculate</button><button class="btn-secondary" onclick="clr()">Clear</button></div>
+        <div><div class="ptitle">Deal Calculator</div><div class="psub" style="margin-bottom:0">Analyze financing, DSCR, and valuation multiples</div></div>
+        <div style="display:flex;gap:8px"><button class="btnp" onclick="doCalc()">Calculate</button><button class="btns" onclick="clrCalc()">Clear</button></div>
       </div>
-      <div class="calc-grid">
+      <div class="cgrid">
         <div>
           <div class="card">
             <div class="ct">Business details</div>
-            <div class="field"><label>Industry</label><select id="ind" onchange="ubm()"><option value="">Select industry...</option><option value="services">Business Services</option><option value="manufacturing">Manufacturing</option><option value="construction">Construction</option><option value="distribution">Distribution / Wholesale</option><option value="healthcare">Healthcare / Medical</option><option value="technology">Technology / SaaS</option><option value="restaurant">Restaurant / Food Service</option><option value="retail">Retail</option><option value="automotive">Automotive</option><option value="hvac">HVAC / Mechanical</option><option value="landscaping">Landscaping</option><option value="other">Other</option></select></div>
-            <div class="field"><label>Asking price</label><input type="number" id="price" placeholder="500,000"></div>
-            <div class="field"><label>Revenue</label><input type="number" id="rev" placeholder="1,000,000"></div>
-            <div class="field"><label>Cash flow (SDE)</label><input type="number" id="sde" placeholder="150,000"></div>
+            <div class="field"><label>Industry</label><select id="ind" onchange="updBM()"><option value="">Select industry...</option><option value="services">Business Services</option><option value="manufacturing">Manufacturing</option><option value="construction">Construction</option><option value="distribution">Distribution / Wholesale</option><option value="healthcare">Healthcare / Medical</option><option value="technology">Technology / SaaS</option><option value="restaurant">Restaurant / Food Service</option><option value="retail">Retail</option><option value="automotive">Automotive</option><option value="hvac">HVAC / Mechanical</option><option value="landscaping">Landscaping</option><option value="other">Other</option></select></div>
+            <div class="field"><label>Asking price</label><input type="number" id="cprice" placeholder="500,000"></div>
+            <div class="field"><label>Revenue</label><input type="number" id="crev" placeholder="1,000,000"></div>
+            <div class="field"><label>Cash flow (SDE)</label><input type="number" id="csde" placeholder="150,000"></div>
           </div>
           <div class="card">
             <div class="ct">Bank financing</div>
-            <div class="ttabs"><button class="ttab on" id="t-sba" onclick="ft('sba')">SBA</button><button class="ttab" id="t-cst" onclick="ft('custom')">Custom</button><button class="ttab" id="t-non" onclick="ft('none')">None</button></div>
+            <div class="ttabs"><button class="ttab on" id="t-sba" onclick="setFin('sba')">SBA</button><button class="ttab" id="t-cst" onclick="setFin('custom')">Custom</button><button class="ttab" id="t-non" onclick="setFin('none')">None</button></div>
             <div id="bankf">
-              <div class="two"><div class="field"><label>Rate (%)</label><input type="number" id="rate" value="9.5" step="0.1"></div><div class="field"><label>Term (yrs)</label><input type="number" id="term" value="10"></div></div>
-              <div class="two"><div class="field"><label>Down (%)</label><input type="number" id="dpct" value="10" step="1" oninput="sd('p')"></div><div class="field"><label>Down ($)</label><input type="number" id="damt" placeholder="Auto" oninput="sd('a')"></div></div>
-              <div class="field"><label>Loan override</label><input type="number" id="loan" placeholder="Auto"></div>
+              <div class="two"><div class="field"><label>Rate (%)</label><input type="number" id="crate" value="9.5" step="0.1"></div><div class="field"><label>Term (yrs)</label><input type="number" id="cterm" value="10"></div></div>
+              <div class="two"><div class="field"><label>Down (%)</label><input type="number" id="cdpct" value="10" step="1" oninput="syncD('p')"></div><div class="field"><label>Down ($)</label><input type="number" id="cdamt" placeholder="Auto" oninput="syncD('a')"></div></div>
+              <div class="field"><label>Loan override</label><input type="number" id="cloan" placeholder="Auto"></div>
             </div>
           </div>
           <div class="card">
             <div class="ct">Seller financing</div>
-            <div class="field"><label>Amount ($)</label><input type="number" id="samt" placeholder="0"></div>
-            <div class="two"><div class="field"><label>Rate (%)</label><input type="number" id="srate" value="6" step="0.1"></div><div class="field"><label>Term (yrs)</label><input type="number" id="sterm" value="5"></div></div>
+            <div class="field"><label>Amount ($)</label><input type="number" id="csamt" placeholder="0"></div>
+            <div class="two"><div class="field"><label>Rate (%)</label><input type="number" id="csrate" value="6" step="0.1"></div><div class="field"><label>Term (yrs)</label><input type="number" id="csterm" value="5"></div></div>
           </div>
           <div class="card">
             <div class="ct">Additional items</div>
-            <div style="font-size:11px;color:var(--text-light);margin-bottom:5px">Annual expenses (reduce SDE)</div>
-            <div id="expl"></div><button class="add-link" onclick="ae('exp')">+ Add expense</button>
+            <div style="font-size:11px;color:var(--tl);margin-bottom:5px">Annual expenses (reduce SDE)</div>
+            <div id="expl"></div><button class="addlink" onclick="addX('exp')">+ Add expense</button>
             <div class="divider"></div>
-            <div style="font-size:11px;color:var(--text-light);margin-bottom:5px">One-time closing costs</div>
-            <div id="clsl"></div><button class="add-link" onclick="ae('cls')">+ Add closing cost</button>
+            <div style="font-size:11px;color:var(--tl);margin-bottom:5px">One-time closing costs</div>
+            <div id="clsl"></div><button class="addlink" onclick="addX('cls')">+ Add closing cost</button>
           </div>
-          <div class="btn-row"><button class="btn-primary" onclick="calc()">Calculate</button><button class="btn-secondary" onclick="clr()">Clear</button></div>
+          <div class="btnrow"><button class="btnp" onclick="doCalc()">Calculate</button><button class="btns" onclick="clrCalc()">Clear</button></div>
         </div>
         <div>
           <div class="card">
             <div class="ct">Valuation</div>
-            <div id="bmbanner" style="display:none;background:var(--cream);border-radius:var(--r);padding:8px 10px;margin-bottom:10px;font-size:12px;color:var(--text-mid)"></div>
+            <div id="bmbanner" style="display:none;background:var(--cream);border-radius:var(--r);padding:8px 10px;margin-bottom:10px;font-size:12px;color:var(--tm)"></div>
             <div class="mg">
               <div class="m"><div class="ml">Asking price</div><div class="mv" id="r-price">—</div></div>
               <div class="m"><div class="ml">SDE</div><div class="mv" id="r-sde">—</div></div>
-              <div class="m"><div class="ml">SDE multiple</div><div class="mv" id="r-sdem">—</div><div class="mv-sub" id="r-sdem-b"></div></div>
-              <div class="m"><div class="ml">Revenue multiple</div><div class="mv" id="r-revm">—</div><div class="mv-sub" id="r-revm-b"></div></div>
+              <div class="m"><div class="ml">SDE multiple</div><div class="mv" id="r-sdem">—</div><div class="mvs" id="r-sdem-b"></div></div>
+              <div class="m"><div class="ml">Revenue multiple</div><div class="mv" id="r-revm">—</div><div class="mvs" id="r-revm-b"></div></div>
               <div class="m"><div class="ml">Revenue</div><div class="mv" id="r-rev">—</div></div>
               <div class="m"><div class="ml">CF margin</div><div class="mv" id="r-margin">—</div></div>
-              <div class="m"><div class="ml">Default rate (industry)</div><div class="mv" id="r-dr">—</div><div class="mv-sub" id="r-dr-n">Select industry above</div></div>
+              <div class="m"><div class="ml">Default rate (industry)</div><div class="mv" id="r-dr">—</div><div class="mvs" id="r-dr-n">Select industry above</div></div>
             </div>
           </div>
           <div class="card">
@@ -315,7 +221,7 @@ body{font-family:'Jost',sans-serif;background:var(--cream);color:var(--text);min
           <div class="card">
             <div class="ct">Deal health</div>
             <div class="mg">
-              <div class="m"><div class="ml">DSCR</div><div class="mv" id="r-dscr">—</div><div class="dscr-bar"><div class="dscr-fill" id="r-dscr-b" style="width:0%"></div></div><div class="ms" id="r-dscr-n"></div></div>
+              <div class="m"><div class="ml">DSCR</div><div class="mv" id="r-dscr">—</div><div class="dscrbar"><div class="dscrfill" id="r-dscr-b" style="width:0%"></div></div><div class="ms" id="r-dscr-n"></div></div>
               <div class="m"><div class="ml">Payback period</div><div class="mv" id="r-pay">—</div></div>
             </div>
           </div>
@@ -323,37 +229,34 @@ body{font-family:'Jost',sans-serif;background:var(--cream);color:var(--text);min
       </div>
     </div>
 
-    <div class="page" id="page-cim">
-      <div class="page-title">CIM Analyzer</div>
-      <div class="page-sub">Upload a CIM for AI-powered deal analysis with market benchmarks</div>
+    <!-- CIM ANALYZER -->
+    <div class="pg" id="pg-cim">
+      <div class="ptitle">CIM Analyzer</div>
+      <div class="psub">Upload a CIM for AI-powered deal analysis with market benchmarks</div>
       <div id="cim-up">
-        <div class="upload-zone" onclick="document.getElementById('cimf').click()" ondragover="dg(event,true)" ondragleave="dg(event,false)" ondrop="dp(event)">
-          <input type="file" id="cimf" accept=".pdf" onchange="of(this.files[0])">
-          <div class="uz-label">Upload CIM or offering memorandum</div>
-          <div class="uz-sub">PDF up to 50MB — drag and drop or click to browse</div>
+        <div class="upzone" onclick="document.getElementById('cimfile').click()" ondragover="onDrag(event,true)" ondragleave="onDrag(event,false)" ondrop="onDrop(event)">
+          <input type="file" id="cimfile" accept=".pdf" onchange="onFile(this.files[0])">
+          <div class="uzlabel">Upload CIM or offering memorandum</div>
+          <div class="uzsub">PDF — drag and drop or click to browse</div>
           <div id="cchip"></div>
         </div>
         <div id="cerr"></div>
-        <div class="btn-row" style="margin-top:10px"><button class="btn-primary" id="cbtn" disabled onclick="run()" style="flex:2">Analyze CIM</button></div>
+        <div class="btnrow" style="margin-top:10px"><button class="btnp" id="cbtn" disabled onclick="runCIM()" style="flex:2">Analyze CIM</button></div>
       </div>
-      <div id="cim-load" style="display:none"><div class="card"><div class="loading"><div class="spinner"></div><div class="l-msg" id="lmsg">Analyzing document...</div><div class="l-sub">This may take 20-30 seconds</div><div class="prog"><div class="prog-fill" id="prog" style="width:5%"></div></div></div></div></div>
+      <div id="cim-load" style="display:none"><div class="card"><div class="loading"><div class="spinner"></div><div class="lmsg" id="clmsg">Reading document...</div><div class="lsub">Extracting text from PDF</div><div class="prog"><div class="progfill" id="cprog" style="width:5%"></div></div></div></div></div>
       <div id="cim-res" style="display:none">
-        <div class="deal-header"><div class="dh-name" id="cr-n">—</div><div class="dh-meta" id="cr-m">—</div><div class="dh-score-row"><div class="score-badge" id="cr-b">—</div><div><div class="dh-verdict" id="cr-v">—</div><div class="dh-rationale" id="cr-r">—</div></div></div></div>
-        <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
-        <button id="gen-memo-btn" class="btn-primary" onclick="generateMemo()" style="height:38px;font-size:13px">Generate Investment Memo</button>
-      </div>
-      <div id="memo-loading" style="display:none;margin-bottom:12px">
-        <div class="card"><div class="loading"><div class="spinner"></div><div class="l-msg" id="memo-l-msg">Generating investment memo...</div><div class="l-sub">Analyzing market data, comparables, and investment thesis</div><div class="prog"><div class="prog-fill" id="memo-prog" style="width:5%"></div></div></div></div>
-      </div>
-      <div id="memo-output" style="display:none;margin-bottom:12px"></div>
-      <div class="cim-tabs"><button class="cim-tab active" onclick="ct('overview',this)">Overview</button><button class="cim-tab" onclick="ct('financials',this)">Financials</button><button class="cim-tab" onclick="ct('sba',this)">SBA</button><button class="cim-tab" onclick="ct('nextsteps',this)">Next steps</button></div>
-        <div class="cim-panel active" id="cp-overview"><div class="card"><div class="ct">Business snapshot</div><table class="kv" id="cr-snap"></table></div><div class="card"><div class="ct">Strengths</div><ul class="flag-list" id="cr-str"></ul></div><div class="card"><div class="ct">Risks</div><ul class="flag-list" id="cr-risk"></ul></div><div class="card"><div class="ct">Market context</div><div class="bm-ctx" id="cr-mkt">—</div></div></div>
-        <div class="cim-panel" id="cp-financials"><div class="mg" id="cr-fm"></div><div class="card"><div class="ct">Financial detail</div><table class="kv" id="cr-ft"></table></div><div class="card"><div class="ct">Benchmark comparison</div><div class="bm-ctx" id="cr-bc">—</div></div><div class="card"><div class="ct">Observations</div><div class="prose" id="cr-fn"></div></div></div>
-        <div class="cim-panel" id="cp-sba"><div class="card"><div class="ct">SBA eligibility</div><div id="cr-sp"></div><table class="kv" id="cr-st"></table></div><div class="card"><div class="ct">DSCR analysis</div><div class="prose" id="cr-da"></div></div><div class="card"><div class="ct">SBA considerations</div><ul class="flag-list" id="cr-sf"></ul></div></div>
-        <div class="cim-panel" id="cp-nextsteps"><div class="card"><div class="ct">Due diligence</div><ul class="flag-list" id="cr-dd"></ul></div><div class="card"><div class="ct">Seller questions</div><ul class="flag-list" id="cr-sq"></ul></div><div class="card"><div class="ct">Next actions</div><ul class="flag-list" id="cr-na"></ul></div></div>
-        <div style="display:flex;align-items:center;gap:12px;margin-top:12px;flex-wrap:wrap">
-        <button class="reset-link" onclick="rst()">← Analyze another CIM</button>
-      </div>
+        <div class="dhead"><div class="dhn" id="cr-n">—</div><div class="dhm" id="cr-m">—</div><div class="dhsr"><div class="sbadge" id="cr-b">—</div><div><div class="dhv" id="cr-v">—</div><div class="dhr" id="cr-r">—</div></div></div></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+          <button class="btnp" id="memobtn" onclick="genMemo()" style="height:38px;font-size:13px">Generate Investment Memo</button>
+          <button style="background:none;border:none;color:var(--copper);font-family:'Jost',sans-serif;font-size:13px;cursor:pointer;padding:0" onclick="resetCIM()">← Analyze another CIM</button>
+        </div>
+        <div id="memo-load" style="display:none;margin-bottom:12px"><div class="card"><div class="loading"><div class="spinner"></div><div class="lmsg" id="mlmsg">Generating investment memo...</div><div class="lsub">Analyzing market data, comparables, and investment thesis</div><div class="prog"><div class="progfill" id="mprog" style="width:5%"></div></div></div></div></div>
+        <div id="memo-out" style="display:none;margin-bottom:12px"></div>
+        <div class="ctabs"><button class="ctab on" onclick="cimTab('overview',this)">Overview</button><button class="ctab" onclick="cimTab('financials',this)">Financials</button><button class="ctab" onclick="cimTab('sba',this)">SBA</button><button class="ctab" onclick="cimTab('nextsteps',this)">Next steps</button></div>
+        <div class="cpanel on" id="cp-overview"><div class="card"><div class="ct">Business snapshot</div><table class="kv" id="cr-snap"></table></div><div class="card"><div class="ct">Strengths</div><ul class="fl" id="cr-str"></ul></div><div class="card"><div class="ct">Risks</div><ul class="fl" id="cr-risk"></ul></div><div class="card"><div class="ct">Market context</div><div class="bmctx" id="cr-mkt">—</div></div></div>
+        <div class="cpanel" id="cp-financials"><div class="mg" id="cr-fm"></div><div class="card"><div class="ct">Financial detail</div><table class="kv" id="cr-ft"></table></div><div class="card"><div class="ct">Benchmark comparison</div><div class="bmctx" id="cr-bc">—</div></div><div class="card"><div class="ct">Observations</div><div class="prose" id="cr-fn"></div></div></div>
+        <div class="cpanel" id="cp-sba"><div class="card"><div class="ct">SBA eligibility</div><div id="cr-sp"></div><table class="kv" id="cr-st"></table></div><div class="card"><div class="ct">DSCR analysis</div><div class="prose" id="cr-da"></div></div><div class="card"><div class="ct">SBA considerations</div><ul class="fl" id="cr-sf"></ul></div></div>
+        <div class="cpanel" id="cp-nextsteps"><div class="card"><div class="ct">Due diligence</div><ul class="fl" id="cr-dd"></ul></div><div class="card"><div class="ct">Seller questions</div><ul class="fl" id="cr-sq"></ul></div><div class="card"><div class="ct">Next actions</div><ul class="fl" id="cr-na"></ul></div></div>
       </div>
     </div>
 
@@ -363,36 +266,59 @@ body{font-family:'Jost',sans-serif;background:var(--cream);color:var(--text);min
 <script>
 pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-// CONFIG - set your API key here
-var AK='';
-
-// GATE
-var PW='RAMOT6';
+// AUTH
+var PW='RAMOT6', AK='';
 function gateSubmit(){
-  var v=document.getElementById('g-code').value.trim().toUpperCase();
-  var k=document.getElementById('g-apikey').value.trim();
-  if(v!==PW){document.getElementById('g-err').textContent='Incorrect access code.';document.getElementById('g-code').value='';document.getElementById('g-code').focus();return;}
-  if(!k){document.getElementById('g-err').textContent='Please enter your Anthropic API key.';document.getElementById('g-apikey').focus();return;}
-  AK=k.trim();show();sessionStorage.setItem('ra','1');sessionStorage.setItem('ak',k.trim());
+  var code=document.getElementById('gcode').value.trim().toUpperCase();
+  var key=document.getElementById('gapikey').value.trim();
+  if(code!==PW){document.getElementById('gerr').textContent='Incorrect access code.';return;}
+  if(!key){document.getElementById('gerr').textContent='Please enter your Anthropic API key.';return;}
+  AK=key;
+  document.getElementById('gate').style.display='none';
+  document.getElementById('app').style.display='flex';
+  sessionStorage.setItem('ra','1');
+  sessionStorage.setItem('ak',key);
 }
-function show(){document.getElementById('gate').style.display='none';document.getElementById('app').style.display='flex';}
-function logout(){sessionStorage.removeItem('ra');document.getElementById('gate').style.display='flex';document.getElementById('app').style.display='none';document.getElementById('g-code').value='';document.getElementById('g-err').textContent='';}
-if(sessionStorage.getItem('ra')==='1'&&sessionStorage.getItem('ak')){AK=sessionStorage.getItem('ak');show();}
+function signOut(){
+  sessionStorage.clear();AK='';
+  document.getElementById('gate').style.display='flex';
+  document.getElementById('app').style.display='none';
+  document.getElementById('gcode').value='';
+  document.getElementById('gapikey').value='';
+  document.getElementById('gerr').textContent='';
+}
+(function(){
+  if(sessionStorage.getItem('ra')==='1'&&sessionStorage.getItem('ak')){
+    AK=sessionStorage.getItem('ak');
+    document.getElementById('gate').style.display='none';
+    document.getElementById('app').style.display='flex';
+  }
+})();
 
 // NAV
-function nav(id,btn){document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});document.querySelectorAll('.nav-btn').forEach(function(b){b.classList.remove('active');});document.getElementById('page-'+id).classList.add('active');btn.classList.add('active');}
+function showPg(id,btn){
+  document.querySelectorAll('.pg').forEach(function(p){p.classList.remove('on');});
+  document.querySelectorAll('.nb').forEach(function(b){b.classList.remove('on');});
+  document.getElementById('pg-'+id).classList.add('on');
+  btn.classList.add('on');
+}
 
 // BENCHMARKS
 var BM={services:{n:'Business Services',s:3.6,r:0.8,m:22,d:3.1},manufacturing:{n:'Manufacturing',s:3.2,r:0.6,m:18,d:4.2},construction:{n:'Construction',s:3.1,r:0.5,m:15,d:5.1},distribution:{n:'Distribution',s:3.3,r:0.4,m:12,d:3.8},healthcare:{n:'Healthcare',s:3.8,r:0.9,m:24,d:2.8},technology:{n:'Technology',s:4.2,r:1.2,m:28,d:2.5},restaurant:{n:'Restaurant',s:2.3,r:0.4,m:10,d:7.2},retail:{n:'Retail',s:2.5,r:0.4,m:11,d:6.1},automotive:{n:'Automotive',s:2.8,r:0.5,m:14,d:4.5},hvac:{n:'HVAC',s:3.3,r:0.6,m:18,d:3.9},landscaping:{n:'Landscaping',s:2.9,r:0.5,m:16,d:4.3},other:{n:'Other',s:3.44,r:0.6,m:16,d:4.0}};
-function ubm(){var i=document.getElementById('ind').value,b=document.getElementById('bmbanner');if(!i||!BM[i]){b.style.display='none';return;}var bm=BM[i];b.style.display='block';b.innerHTML='<strong>'+bm.n+'</strong> — SDE avg: <strong>'+bm.s+'x</strong> &nbsp;·&nbsp; Default rate: <strong>'+bm.d+'%</strong> &nbsp;·&nbsp; <span style="color:var(--text-light);font-size:11px">Peercomps/IBBA Q3 2025</span>';}
+function updBM(){
+  var i=document.getElementById('ind').value,b=document.getElementById('bmbanner');
+  if(!i||!BM[i]){b.style.display='none';return;}
+  var bm=BM[i];b.style.display='block';
+  b.innerHTML='<strong>'+bm.n+'</strong> — SDE avg: <strong>'+bm.s+'x</strong> &nbsp;·&nbsp; Default rate: <strong>'+bm.d+'%</strong> &nbsp;·&nbsp; <span style="color:var(--tl);font-size:11px">Peercomps/IBBA Q3 2025</span>';
+}
 
 // CALCULATOR
-var ft_='sba',ex_={exp:[],cls:[]};
-function ft(t){ft_=t;['sba','custom','none'].forEach(function(x){var id=x==='sba'?'t-sba':x==='custom'?'t-cst':'t-non';document.getElementById(id).className='ttab'+(x===t?' on':'');});document.getElementById('bankf').style.display=t==='none'?'none':'block';}
-function sd(f){var p=parseFloat(document.getElementById('price').value)||0;if(!p)return;if(f==='p'){document.getElementById('damt').value=Math.round(p*(parseFloat(document.getElementById('dpct').value)||0)/100)||'';}else{document.getElementById('dpct').value=p?((parseFloat(document.getElementById('damt').value)||0)/p*100).toFixed(1):'';}}
-function ae(t){var id=Date.now();ex_[t].push(id);var l=document.getElementById(t==='exp'?'expl':'clsl');var d=document.createElement('div');d.className='extra-row';d.id='ex'+id;d.innerHTML='<input type="text" placeholder="Label" style="width:40%"><input type="number" placeholder="Amount"><button class="rm-btn" onclick="re(\''+t+'\','+id+')">×</button>';l.appendChild(d);}
-function re(t,id){ex_[t]=ex_[t].filter(function(x){return x!==id;});var e=document.getElementById('ex'+id);if(e)e.remove();}
-function xt(t){return ex_[t].reduce(function(s,id){var e=document.getElementById('ex'+id);if(!e)return s;return s+(parseFloat(e.querySelectorAll('input')[1].value)||0);},0);}
+var fin='sba',ex={exp:[],cls:[]};
+function setFin(t){fin=t;['sba','custom','none'].forEach(function(x){var id=x==='sba'?'t-sba':x==='custom'?'t-cst':'t-non';document.getElementById(id).className='ttab'+(x===t?' on':'');});document.getElementById('bankf').style.display=t==='none'?'none':'block';}
+function syncD(f){var p=parseFloat(document.getElementById('cprice').value)||0;if(!p)return;if(f==='p'){document.getElementById('cdamt').value=Math.round(p*(parseFloat(document.getElementById('cdpct').value)||0)/100)||'';}else{document.getElementById('cdpct').value=p?((parseFloat(document.getElementById('cdamt').value)||0)/p*100).toFixed(1):'';}}
+function addX(t){var id=Date.now();ex[t].push(id);var l=document.getElementById(t==='exp'?'expl':'clsl');var d=document.createElement('div');d.className='xrow';d.id='x'+id;d.innerHTML='<input type="text" placeholder="Label" style="width:40%"><input type="number" placeholder="Amount"><button class="rmbtn" onclick="rmX(\''+t+'\','+id+')">×</button>';l.appendChild(d);}
+function rmX(t,id){ex[t]=ex[t].filter(function(x){return x!==id;});var e=document.getElementById('x'+id);if(e)e.remove();}
+function xtot(t){return ex[t].reduce(function(s,id){var e=document.getElementById('x'+id);if(!e)return s;return s+(parseFloat(e.querySelectorAll('input')[1].value)||0);},0);}
 function gn(id){return parseFloat(document.getElementById(id).value)||0;}
 function fm(n){return(isNaN(n)||n==null)?'—':'$'+Math.round(n).toLocaleString();}
 function fx(n){return(!n||isNaN(n)||!isFinite(n))?'—':n.toFixed(2)+'x';}
@@ -400,33 +326,33 @@ function fp(n){return isNaN(n)?'—':n.toFixed(1)+'%';}
 function sv(id,val,cls){var e=document.getElementById(id);e.textContent=val;e.className='mv'+(cls?' '+cls:'');}
 function pmt(r,y,pv){if(!r||!y||!pv)return 0;var m=r/12/100,n=y*12;return pv*(m*Math.pow(1+m,n))/(Math.pow(1+m,n)-1);}
 function gfee(l){return l<=150000?l*0.02:l<=700000?l*0.03:l*0.035;}
-function calc(){
-  var price=gn('price'),rev=gn('rev'),sde=gn('sde'),rate=gn('rate'),term=gn('term'),samt=gn('samt'),srate=gn('srate'),sterm=gn('sterm');
-  var dpct=(gn('dpct')||10)/100,damt=gn('damt')||(price*dpct);
-  var loan=gn('loan')||(price-damt-samt);if(loan<0)loan=0;
-  var addE=xt('exp'),addC=xt('cls');
-  var fee=ft_==='sba'?gfee(loan):0;
+function doCalc(){
+  var price=gn('cprice'),rev=gn('crev'),sde=gn('csde'),rate=gn('crate'),term=gn('cterm'),samt=gn('csamt'),srate=gn('csrate'),sterm=gn('csterm');
+  var dpct=(gn('cdpct')||10)/100,damt=gn('cdamt')||(price*dpct);
+  var loan=gn('cloan')||(price-damt-samt);if(loan<0)loan=0;
+  var addE=xtot('exp'),addC=xtot('cls');
+  var fee=fin==='sba'?gfee(loan):0;
   var tAcq=price+fee+addC,tDown=damt+fee+addC,tDebt=loan+samt;
-  var bPmt=ft_!=='none'?pmt(rate,term,loan):0,sPmt=samt?pmt(srate,sterm,samt):0;
+  var bPmt=fin!=='none'?pmt(rate,term,loan):0,sPmt=samt?pmt(srate,sterm,samt):0;
   var moT=bPmt+sPmt,annT=moT*12;
   var adjSDE=sde-addE,dscr=annT>0?adjSDE/annT:null,payback=adjSDE>0?damt/adjSDE:null;
   var sdeM=sde>0?price/sde:null,revM=rev>0?price/rev:null,margin=rev>0?sde/rev*100:null;
   sv('r-price',fm(price));sv('r-sde',fm(sde));sv('r-rev',fm(rev));
   sv('r-sdem',fx(sdeM));sv('r-revm',fx(revM));sv('r-margin',fp(margin));
   sv('r-total',fm(tAcq));sv('r-down',fm(tDown));sv('r-debt',fm(tDebt));
-  sv('r-gfee',ft_==='sba'?fm(fee):'N/A');sv('r-mo',fm(moT));sv('r-ann',fm(annT));
+  sv('r-gfee',fin==='sba'?fm(fee):'N/A');sv('r-mo',fm(moT));sv('r-ann',fm(annT));
   if(dscr!==null&&isFinite(dscr)){var cls=dscr>=1.25?'good':dscr>=1.0?'warn':'bad';sv('r-dscr',dscr.toFixed(2)+'x',cls);var bar=document.getElementById('r-dscr-b');bar.style.width=Math.min(dscr/2.5*100,100)+'%';bar.style.background=dscr>=1.25?'#2d6a4f':dscr>=1.0?'#b07d00':'#7d1a1a';document.getElementById('r-dscr-n').textContent=dscr>=1.25?'Strong — above 1.25x':dscr>=1.0?'Marginal':'Below SBA minimum';}else{sv('r-dscr','—');}
   sv('r-pay',payback?payback.toFixed(1)+' yrs':'—');
   var ind=document.getElementById('ind').value,bm=ind?BM[ind]:null;
-  document.getElementById('r-sdem-b').innerHTML=bm&&sdeM?'<span style="color:'+(sdeM>bm.s?'var(--danger)':'var(--success)')+'">market avg '+bm.s+'x ('+(sdeM>bm.s?'above':'below')+')</span>':'';
-  document.getElementById('r-revm-b').innerHTML=bm&&revM?'<span style="color:var(--text-light)">market avg '+bm.r+'x</span>':'';
+  document.getElementById('r-sdem-b').innerHTML=bm&&sdeM?'<span style="color:'+(sdeM>bm.s?'var(--sd)':'var(--sg)')+'">market avg '+bm.s+'x ('+(sdeM>bm.s?'above':'below')+')</span>':'';
+  document.getElementById('r-revm-b').innerHTML=bm&&revM?'<span style="color:var(--tl)">market avg '+bm.r+'x</span>':'';
   if(bm){sv('r-dr',bm.d.toFixed(1)+'%',bm.d>5?'bad':bm.d>3.5?'warn':'good');document.getElementById('r-dr-n').textContent='All industries avg: 4.0%';}
   else{sv('r-dr','—');document.getElementById('r-dr-n').textContent='Select industry above';}
 }
-function clr(){
-  ['price','rev','sde','loan','damt','samt'].forEach(function(id){document.getElementById(id).value='';});
-  document.getElementById('dpct').value='10';document.getElementById('rate').value='9.5';document.getElementById('term').value='10';document.getElementById('srate').value='6';document.getElementById('sterm').value='5';
-  document.getElementById('expl').innerHTML='';document.getElementById('clsl').innerHTML='';ex_={exp:[],cls:[]};ft('sba');document.getElementById('ind').value='';
+function clrCalc(){
+  ['cprice','crev','csde','cloan','cdamt','csamt'].forEach(function(id){document.getElementById(id).value='';});
+  document.getElementById('cdpct').value='10';document.getElementById('crate').value='9.5';document.getElementById('cterm').value='10';document.getElementById('csrate').value='6';document.getElementById('csterm').value='5';
+  document.getElementById('expl').innerHTML='';document.getElementById('clsl').innerHTML='';ex={exp:[],cls:[]};setFin('sba');document.getElementById('ind').value='';
   ['r-price','r-sde','r-rev','r-sdem','r-revm','r-margin','r-total','r-down','r-debt','r-gfee','r-mo','r-ann','r-dscr','r-pay'].forEach(function(id){sv(id,'—');});
   ['r-sdem-b','r-revm-b'].forEach(function(id){document.getElementById(id).innerHTML='';});
   document.getElementById('r-dscr-b').style.width='0%';document.getElementById('r-dscr-n').textContent='';
@@ -435,95 +361,169 @@ function clr(){
 }
 
 // CIM
-var cimF=null;
-function dg(e,on){e.preventDefault();}
-function dp(e){e.preventDefault();if(e.dataTransfer.files[0])of(e.dataTransfer.files[0]);}
-function of(f){if(!f||f.type!=='application/pdf'){se('Please upload a PDF.');return;}cimF=f;document.getElementById('cerr').innerHTML='';document.getElementById('cchip').innerHTML='<div class="file-chip"><span>'+f.name+'</span><button onclick="cf(event)">×</button></div>';document.getElementById('cbtn').disabled=false;}
-function cf(e){e.stopPropagation();cimF=null;document.getElementById('cchip').innerHTML='';document.getElementById('cbtn').disabled=true;}
-function se(msg){document.getElementById('cerr').innerHTML='<div class="err-box">'+msg+'</div>';}
-function sp(p,m){document.getElementById('prog').style.width=p+'%';if(m)document.getElementById('lmsg').textContent=m;}
+var cimFile=null;
+function onDrag(e,on){e.preventDefault();}
+function onDrop(e){e.preventDefault();if(e.dataTransfer.files[0])onFile(e.dataTransfer.files[0]);}
+function onFile(f){
+  if(!f||f.type!=='application/pdf'){showErr('Please upload a PDF.');return;}
+  cimFile=f;document.getElementById('cerr').innerHTML='';
+  document.getElementById('cchip').innerHTML='<div class="fchip"><span>'+f.name+'</span><button onclick="clrFile(event)">×</button></div>';
+  document.getElementById('cbtn').disabled=false;
+}
+function clrFile(e){e.stopPropagation();cimFile=null;document.getElementById('cchip').innerHTML='';document.getElementById('cbtn').disabled=true;}
+function showErr(msg){document.getElementById('cerr').innerHTML='<div class="errbox">'+msg+'</div>';}
+function sp(pct,msg){document.getElementById('cprog').style.width=pct+'%';if(msg)document.getElementById('clmsg').textContent=msg;}
 
-async function run(){
-  if(!cimF)return;
+async function callAPI(msgs,model,maxTok){
+  var resp=await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','x-api-key':AK,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+    body:JSON.stringify({model:model||'claude-haiku-4-5-20251001',max_tokens:maxTok||8192,messages:msgs})
+  });
+  var data=await resp.json();
+  if(!resp.ok)throw new Error(data.error&&data.error.message?data.error.message:'Error '+resp.status);
+  return data.content.filter(function(b){return b.type==='text';}).map(function(b){return b.text;}).join('');
+}
+
+async function runCIM(){
+  if(!cimFile)return;
   document.getElementById('cim-up').style.display='none';
   document.getElementById('cim-load').style.display='block';
   document.getElementById('cim-res').style.display='none';
+  document.getElementById('memo-out').style.display='none';
   sp(5,'Reading PDF...');
 
-  var ab=await cimF.arrayBuffer();
+  var ab=await cimFile.arrayBuffer();
   var pdf=await pdfjsLib.getDocument({data:ab}).promise;
-  var total=pdf.numPages;
-  var txt='';
-  // Read ALL pages - collect full text first
-  var allPages=[];
+  var total=pdf.numPages,txt='';
   for(var i=1;i<=total;i++){
     var pg=await pdf.getPage(i);
     var c=await pg.getTextContent();
-    allPages.push(c.items.map(function(s){return s.str;}).join(' '));
+    txt+=c.items.map(function(s){return s.str;}).join(' ')+'\n';
     sp(5+Math.round(i/total*40));
   }
-  // First 15 pages (intro/overview)
-  var intro=allPages.slice(0,15).join('\n');
-  // Pages 15 to end (financials and rest)
-  var financials=allPages.slice(15).join('\n');
-  // Build combined text prioritizing financial data
-  txt='=== OVERVIEW (Pages 1-15) ===\n'+intro+'\n\n=== FINANCIALS & REMAINING (Pages 16-'+total+') ===\n'+financials;
-  if(txt.trim().length<200){document.getElementById('cim-up').style.display='block';document.getElementById('cim-load').style.display='none';se('Not enough readable text found.');return;}
+  if(txt.trim().length<200){document.getElementById('cim-up').style.display='block';document.getElementById('cim-load').style.display='none';showErr('Not enough readable text found.');return;}
 
-  var t=txt;
-  sp(45,'Analyzing with AI...');
+  sp(50,'Analyzing with AI...');
 
-  var prompt='Return ONLY a JSON object analyzing this business CIM. No text outside the JSON.\n\n{"businessName":"","industry":"","location":"","score":70,"scoreVerdict":"","scoreRationale":"","snapshot":[{"label":"Business type","value":""},{"label":"Asking price","value":""},{"label":"Revenue","value":""},{"label":"SDE","value":""},{"label":"Employees","value":""},{"label":"Years operating","value":""},{"label":"Reason for sale","value":""},{"label":"Customer concentration","value":""}],"strengths":[{"text":"","severity":"green"},{"text":"","severity":"green"}],"risks":[{"text":"","severity":"red"},{"text":"","severity":"amber"}],"marketContext":"","financialMetrics":[{"label":"Asking price","value":"","benchmark":null},{"label":"Revenue","value":"","benchmark":null},{"label":"SDE","value":"","benchmark":null},{"label":"SDE multiple","value":"","benchmark":"market avg 3.44x"}],"financialTable":[{"label":"Revenue Y1","value":""},{"label":"Revenue Y2","value":""},{"label":"Revenue Y3","value":""},{"label":"Adj SDE","value":""},{"label":"FF&E","value":""}],"benchmarkComparison":"","financialNotes":"","sbaEligible":"Yes","sbaTable":[{"label":"Loan type","value":"SBA 7(a)"},{"label":"Est loan","value":""},{"label":"Est down","value":""},{"label":"Rate","value":"9.5%"},{"label":"Est DSCR","value":""}],"dscrAnalysis":"","sbaFlags":[{"text":"","severity":"green"}],"dueDiligence":[{"text":"","severity":"amber"},{"text":"","severity":"amber"}],"sellerQuestions":[{"text":"","severity":"amber"},{"text":"","severity":"amber"}],"nextActions":[{"text":"","severity":"green"},{"text":"","severity":"green"}]}\n\nRules: score=0-100, severity=green/amber/red, missing="Not disclosed", DSCR=90%LTV 9.5% 10yr.\n\nCIM:\n'+t;
+  var prompt='Return ONLY a JSON object analyzing this business CIM. No text before or after.\n\n{"businessName":"","industry":"","location":"","score":70,"scoreVerdict":"","scoreRationale":"","snapshot":[{"label":"Business type","value":""},{"label":"Asking price","value":""},{"label":"Revenue","value":""},{"label":"SDE","value":""},{"label":"Employees","value":""},{"label":"Years operating","value":""},{"label":"Reason for sale","value":""},{"label":"Customer concentration","value":""}],"strengths":[{"text":"","severity":"green"},{"text":"","severity":"green"}],"risks":[{"text":"","severity":"red"},{"text":"","severity":"amber"}],"marketContext":"","financialMetrics":[{"label":"Asking price","value":"","benchmark":null},{"label":"Revenue","value":"","benchmark":null},{"label":"SDE","value":"","benchmark":null},{"label":"SDE multiple","value":"","benchmark":"market avg 3.44x"}],"financialTable":[{"label":"Revenue Y1","value":""},{"label":"Revenue Y2","value":""},{"label":"Revenue Y3","value":""},{"label":"Adj SDE","value":""},{"label":"FF&E","value":""}],"benchmarkComparison":"","financialNotes":"","sbaEligible":"Yes","sbaTable":[{"label":"Loan type","value":"SBA 7(a)"},{"label":"Est loan","value":""},{"label":"Est down","value":""},{"label":"Rate","value":"9.5%"},{"label":"Est DSCR","value":""}],"dscrAnalysis":"","sbaFlags":[{"text":"","severity":"green"}],"dueDiligence":[{"text":"","severity":"amber"},{"text":"","severity":"amber"}],"sellerQuestions":[{"text":"","severity":"amber"},{"text":"","severity":"amber"}],"nextActions":[{"text":"","severity":"green"},{"text":"","severity":"green"}]}\n\nRules: score=0-100, severity=green/amber/red, missing="Not disclosed", DSCR=90%LTV 9.5% 10yr.\n\nCIM:\n'+txt;
 
   try{
-    var resp=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':AK,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:8192,messages:[{role:'user',content:prompt}]})
-    });
-    var data=await resp.json();
-    if(!resp.ok)throw new Error(data.error&&data.error.message?data.error.message:'Error '+resp.status);
-    var raw=data.content.filter(function(b){return b.type==='text';}).map(function(b){return b.text;}).join('');
+    var raw=await callAPI([{role:'user',content:prompt}],'claude-haiku-4-5-20251001',8192);
     var clean=raw.replace(/```json|```/g,'').trim();
     if(!clean.endsWith('}')){var lb=clean.lastIndexOf('}');if(lb>0)clean=clean.substring(0,lb+1);}
     var result=JSON.parse(clean);
     sp(100);
-    rend(result);
+    renderCIM(result);
     document.getElementById('cim-load').style.display='none';
     document.getElementById('cim-res').style.display='block';
   }catch(e){
     document.getElementById('cim-up').style.display='block';
     document.getElementById('cim-load').style.display='none';
-    se('Analysis failed: '+e.message);
+    showErr('Analysis failed: '+e.message);
   }
 }
 
-function rend(r){
+function renderCIM(r){
   document.getElementById('cr-n').textContent=r.businessName||'Unnamed business';
   document.getElementById('cr-m').textContent=[r.industry,r.location].filter(Boolean).join(' · ');
   var score=r.score||0,badge=document.getElementById('cr-b');
-  badge.textContent=score;badge.className='score-badge '+(score>=70?'strong':score>=50?'moderate':'weak');
+  badge.textContent=score;badge.className='sbadge '+(score>=70?'strong':score>=50?'moderate':'weak');
   document.getElementById('cr-v').textContent=r.scoreVerdict||'';
   document.getElementById('cr-r').textContent=r.scoreRationale||'';
   rkv('cr-snap',r.snapshot||[]);rfl('cr-str',r.strengths||[]);rfl('cr-risk',r.risks||[]);
   document.getElementById('cr-mkt').textContent=r.marketContext||'—';
   var mg=document.getElementById('cr-fm');mg.innerHTML='';
-  (r.financialMetrics||[]).forEach(function(m){mg.innerHTML+='<div class="m"><div class="ml">'+m.label+'</div><div class="mv">'+m.value+'</div>'+(m.benchmark?'<div class="mv-sub">'+m.benchmark+'</div>':'')+'</div>';});
+  (r.financialMetrics||[]).forEach(function(m){mg.innerHTML+='<div class="m"><div class="ml">'+m.label+'</div><div class="mv">'+m.value+'</div>'+(m.benchmark?'<div class="mvs">'+m.benchmark+'</div>':'')+'</div>';});
   rkv('cr-ft',r.financialTable||[]);
   document.getElementById('cr-bc').textContent=r.benchmarkComparison||'—';
   document.getElementById('cr-fn').innerHTML='<p>'+(r.financialNotes||'')+'</p>';
   var el=r.sbaEligible||'Unknown',cls=(el==='Yes'||el==='Likely')?'yes':(el==='No'||el==='Unlikely')?'no':'maybe';
-  document.getElementById('cr-sp').innerHTML='<span class="sba-pill '+cls+'">SBA eligible: '+el+'</span>';
+  document.getElementById('cr-sp').innerHTML='<span class="sbapill '+cls+'">SBA eligible: '+el+'</span>';
   rkv('cr-st',r.sbaTable||[]);
   document.getElementById('cr-da').innerHTML='<p>'+(r.dscrAnalysis||'')+'</p>';
   rfl('cr-sf',r.sbaFlags||[]);rfl('cr-dd',r.dueDiligence||[]);rfl('cr-sq',r.sellerQuestions||[]);rfl('cr-na',r.nextActions||[]);
 }
 function rkv(id,rows){var t=document.getElementById(id);t.innerHTML='';(rows||[]).forEach(function(r){t.innerHTML+='<tr><td>'+r.label+'</td><td>'+r.value+'</td></tr>';});}
-function rfl(id,items){var ul=document.getElementById(id);ul.innerHTML='';(items||[]).forEach(function(item){ul.innerHTML+='<li class="flag '+(item.severity||'amber')+'"><span class="fdot"></span><span>'+item.text+'</span></li>';});}
-function ct(name,btn){document.querySelectorAll('.cim-tab').forEach(function(b){b.classList.remove('active');});document.querySelectorAll('.cim-panel').forEach(function(p){p.classList.remove('active');});btn.classList.add('active');document.getElementById('cp-'+name).classList.add('active');}
-function rst(){cimF=null;document.getElementById('cchip').innerHTML='';document.getElementById('cbtn').disabled=true;document.getElementById('cerr').innerHTML='';document.getElementById('cim-res').style.display='none';document.getElementById('cim-up').style.display='block';ct('overview',document.querySelector('.cim-tab'));}
+function rfl(id,items){var ul=document.getElementById(id);ul.innerHTML='';(items||[]).forEach(function(item){ul.innerHTML+='<li class="fi '+(item.severity||'amber')+'"><span class="fdot"></span><span>'+item.text+'</span></li>';});}
+function cimTab(name,btn){document.querySelectorAll('.ctab').forEach(function(b){b.classList.remove('on');});document.querySelectorAll('.cpanel').forEach(function(p){p.classList.remove('on');});btn.classList.add('on');document.getElementById('cp-'+name).classList.add('on');}
+function resetCIM(){cimFile=null;document.getElementById('cchip').innerHTML='';document.getElementById('cbtn').disabled=true;document.getElementById('cerr').innerHTML='';document.getElementById('cim-res').style.display='none';document.getElementById('cim-up').style.display='block';document.getElementById('memo-out').style.display='none';cimTab('overview',document.querySelector('.ctab'));}
 
+// INVESTMENT MEMO
+async function genMemo(){
+  document.getElementById('memobtn').disabled=true;
+  document.getElementById('memo-load').style.display='block';
+  document.getElementById('memo-out').style.display='none';
+  document.getElementById('mprog').style.width='10%';
 
+  var bizName=document.getElementById('cr-n').textContent;
+  var metaText=document.getElementById('cr-m').textContent;
+  var industry=metaText.split(' · ')[0]||'';
+  var score=document.getElementById('cr-b').textContent;
+  var verdict=document.getElementById('cr-v').textContent;
+  var snapData={},finData={};
+  document.querySelectorAll('#cr-snap tr').forEach(function(r){var c=r.querySelectorAll('td');if(c.length===2)snapData[c[0].textContent]=c[1].textContent;});
+  document.querySelectorAll('#cr-ft tr').forEach(function(r){var c=r.querySelectorAll('td');if(c.length===2)finData[c[0].textContent]=c[1].textContent;});
+  var strengths=[],risks=[],ddItems=[];
+  document.querySelectorAll('#cr-str li span:last-child').forEach(function(s){strengths.push(s.textContent);});
+  document.querySelectorAll('#cr-risk li span:last-child').forEach(function(s){risks.push(s.textContent);});
+  document.querySelectorAll('#cr-dd li span:last-child').forEach(function(s){ddItems.push(s.textContent);});
+  var sbaAnalysis=document.getElementById('cr-da').textContent;
+  var mktContext=document.getElementById('cr-mkt').textContent;
+  var finNotes=document.getElementById('cr-fn').textContent;
+  var benchComp=document.getElementById('cr-bc').textContent;
+
+  document.getElementById('mprog').style.width='20%';
+  document.getElementById('mlmsg').textContent='Writing investment memo...';
+
+  var prompt='You are a senior PE associate at RAMOT Consulting Group writing an Investment Memo for the Managing Director.\n\nCIM DATA:\nBusiness: '+bizName+'\nIndustry: '+industry+'\nScore: '+score+'/100 — '+verdict+'\nAsking Price: '+(snapData['Asking price']||'Not disclosed')+'\nRevenue: '+(snapData['Revenue']||'Not disclosed')+'\nSDE: '+(snapData['SDE']||'Not disclosed')+'\nEmployees: '+(snapData['Employees']||'Not disclosed')+'\nYears Operating: '+(snapData['Years operating']||'Not disclosed')+'\nReason for Sale: '+(snapData['Reason for sale']||'Not disclosed')+'\nCustomer Concentration: '+(snapData['Customer concentration']||'Not disclosed')+'\nRevenue Y1: '+(finData['Revenue Y1']||'Not disclosed')+'\nRevenue Y2: '+(finData['Revenue Y2']||'Not disclosed')+'\nRevenue Y3: '+(finData['Revenue Y3']||'Not disclosed')+'\nAdj SDE: '+(finData['Adj SDE']||'Not disclosed')+'\nSBA Analysis: '+sbaAnalysis+'\nMarket Context: '+mktContext+'\nFinancial Notes: '+finNotes+'\nBenchmark Comparison: '+benchComp+'\nStrengths: '+strengths.join('; ')+'\nRisks: '+risks.join('; ')+'\nDue Diligence: '+ddItems.join('; ')+'\n\nWrite a comprehensive Investment Memo using the above data AND your knowledge of the '+industry+' industry. Use professional PE memo style.\n\nStructure it with these exact sections:\n\n# INVESTMENT MEMORANDUM\n## '+bizName+'\n*Prepared by RAMOT Consulting Group*\n\n---\n\n## EXECUTIVE SUMMARY\n\n## DEAL OVERVIEW\n\n## MARKET ANALYSIS\n### Industry Overview & TAM\n### Growth Drivers\n### Headwinds & Challenges\n### Competitive Landscape\n### Customer & Demand Analysis\n\n## FINANCIAL ANALYSIS\n\n## COMPARABLE TRANSACTIONS\n\n## INVESTMENT THESIS\n\n## KEY RISKS & MITIGANTS\n\n## RECOMMENDATION\n\nBe specific with numbers. For market data provide estimates with ranges. This goes to the MD.';
+
+  try{
+    document.getElementById('mprog').style.width='40%';
+    var raw=await callAPI([{role:'user',content:prompt}],'claude-sonnet-4-5',8192);
+    document.getElementById('mprog').style.width='90%';
+
+    // Convert markdown to HTML
+    var html=raw
+      .replace(/^# (.+)$/gm,'<h1>$1</h1>')
+      .replace(/^## (.+)$/gm,'<h2>$1</h2>')
+      .replace(/^### (.+)$/gm,'<h3>$1</h3>')
+      .replace(/^\*(.+)\*$/gm,'<p><em>$1</em></p>')
+      .replace(/^---$/gm,'<hr>')
+      .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+      .replace(/^[*-] (.+)$/gm,'<li>$1</li>')
+      .replace(/(<li>.*<\/li>\n?)+/g,function(m){return '<ul>'+m+'</ul>';})
+      .replace(/\n\n/g,'</p><p>')
+      .replace(/\n/g,'<br>');
+    html='<p>'+html+'</p>';
+
+    document.getElementById('mprog').style.width='100%';
+    document.getElementById('memo-load').style.display='none';
+    document.getElementById('memo-out').style.display='block';
+    document.getElementById('memo-out').innerHTML=
+      '<div class="card memo-section" style="padding:1.5rem 2rem">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;padding-bottom:10px;border-bottom:1px solid var(--b)">'+
+      '<span style="font-size:11px;color:var(--tl);text-transform:uppercase;letter-spacing:0.06em">RAMOT Consulting Group — Confidential</span>'+
+      '<button onclick="printMemo()" style="height:32px;padding:0 12px;background:var(--navy);color:var(--white);border:none;border-radius:var(--r);font-family:\'Jost\',sans-serif;font-size:12px;cursor:pointer">Export / Print</button>'+
+      '</div>'+html+'</div>';
+
+    document.getElementById('memobtn').disabled=false;
+    document.getElementById('memo-out').scrollIntoView({behavior:'smooth'});
+  }catch(e){
+    document.getElementById('memo-load').style.display='none';
+    document.getElementById('memo-out').style.display='block';
+    document.getElementById('memo-out').innerHTML='<div class="errbox">Failed to generate memo: '+e.message+'</div>';
+    document.getElementById('memobtn').disabled=false;
+  }
+}
+
+function printMemo(){
+  var content=document.getElementById('memo-out').innerHTML;
+  var w=window.open('','_blank');
+  w.document.write('<html><head><title>Investment Memo — RAMOT Consulting Group</title><style>body{font-family:Georgia,serif;max-width:800px;margin:40px auto;padding:0 20px;color:#1a2744;font-size:13px;line-height:1.65}h1{font-size:24px;margin-bottom:4px}h2{font-size:18px;border-top:1px solid #ddd;padding-top:14px;margin-top:20px}h3{font-size:12px;text-transform:uppercase;letter-spacing:0.05em;color:#666;margin-top:12px}ul{padding-left:1.2rem;margin:6px 0}li{margin-bottom:3px}p{margin-bottom:8px}hr{border:none;border-top:1px solid #ddd;margin:8px 0}strong{font-weight:600}table{width:100%;border-collapse:collapse;margin:8px 0}th{text-align:left;padding:6px 8px;background:#f5f5f5;border-bottom:1px solid #ddd}td{padding:6px 8px;border-bottom:1px solid #eee}.card{display:none}button{display:none}@media print{button{display:none}}</style></head><body>'+content+'</body></html>');
+  w.document.close();
+  setTimeout(function(){w.print();},500);
+}
 </script>
 </body>
 </html>
