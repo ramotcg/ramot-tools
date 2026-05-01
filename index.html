@@ -562,13 +562,15 @@ async function genMemo(){
     document.getElementById('mprog').style.width='40%';
     var raw=await callAPI([{role:'user',content:prompt}],'claude-sonnet-4-5',8192);
     document.getElementById('mprog').style.width='90%';
-    document.getElementById('mlmsg').textContent='Formatting memo...';
-    buildMemoPDF(raw,bizName,industry,score,verdict,snapData,finData);
+    document.getElementById('mlmsg').textContent='Opening PDF...';
+    var pdfHtml=buildMemoPDF(raw,bizName,industry,score,verdict,snapData,finData);
     document.getElementById('mprog').style.width='100%';
     document.getElementById('memo-load').style.display='none';
-    document.getElementById('memo-out').style.display='block';
     document.getElementById('memobtn').disabled=false;
-    document.getElementById('memo-out').scrollIntoView({behavior:'smooth'});
+    var w=window.open('','_blank');
+    w.document.write(pdfHtml);
+    w.document.close();
+    setTimeout(function(){w.print();},800);
   }catch(e){
     document.getElementById('memo-load').style.display='none';
     document.getElementById('memo-out').style.display='block';
@@ -669,9 +671,9 @@ function buildMemoPDF(raw,bizName,industry,score,verdict,snapData,finData){
     '<span style="font-size:11px;color:#8a96a8">Confidential - For internal use only</span>'+
     '</div>'+
     '</div>'+
-    '<button class="savepdf" onclick="printMemo()">Save as PDF</button>';
+    '';
 
-  document.getElementById('memo-out').innerHTML=html;
+  return '<html><head><title>Investment Memo - '+bizName+'</title></head><body>'+html+'</body></html>';
 }
 
 function printMemo(){
