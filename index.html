@@ -563,7 +563,7 @@ async function genMemo(){
   if(pdfWin)pdfWin.document.write('<html><body><p style="font-family:sans-serif;padding:2rem;color:#666">Generating memo, please wait...</p></body></html>');
   try{
     document.getElementById('mprog').style.width='40%';
-    var raw=await callAPI([{role:'user',content:prompt}],'claude-sonnet-4-5',8192);
+    var raw=await callAPI([{role:'user',content:prompt}],'claude-sonnet-4-6',8192);
     document.getElementById('mprog').style.width='90%';
     document.getElementById('mlmsg').textContent='Opening PDF...';
     var pdfHtml=buildMemoPDF(raw,bizName,industry,score,verdict,snapData,finData);
