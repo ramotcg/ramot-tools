@@ -123,8 +123,10 @@ body{font-family:'Jost',sans-serif;background:var(--cream);color:var(--text);min
     <div class="g-dots"><div class="g-dot"></div><div class="g-dot"></div><div class="g-dot"></div><div class="g-dot"></div><div class="g-dot"></div><div class="g-diamond"></div></div>
     <div class="g-name">RAMOT</div>
     <div class="g-tagline">Consulting Group — Deal Tools</div>
-    <div class="g-label">Enter your access code to continue</div>
-    <input class="g-input" type="password" id="g-code" placeholder="••••••" onkeydown="if(event.key==='Enter')gateSubmit()">
+    <div class="g-label">Enter your access code</div>
+    <input class="g-input" type="password" id="g-code" placeholder="Access code" onkeydown="if(event.key==='Enter')gateSubmit()" style="margin-bottom:10px">
+    <div class="g-label" style="margin-top:8px">Enter your Anthropic API key</div>
+    <input class="g-input" type="password" id="g-apikey" placeholder="sk-ant-..." onkeydown="if(event.key==='Enter')gateSubmit()">
     <button class="g-btn" onclick="gateSubmit()">Access Tools</button>
     <div class="g-err" id="g-err"></div>
   </div>
@@ -250,18 +252,20 @@ body{font-family:'Jost',sans-serif;background:var(--cream);color:var(--text);min
 pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
 // CONFIG - set your API key here
-var AK='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';
+var AK='';
 
 // GATE
 var PW='RAMOT6';
 function gateSubmit(){
   var v=document.getElementById('g-code').value.trim().toUpperCase();
-  if(v===PW){show();sessionStorage.setItem('ra','1');}
-  else{document.getElementById('g-err').textContent='Incorrect access code.';document.getElementById('g-code').value='';document.getElementById('g-code').focus();}
+  var k=document.getElementById('g-apikey').value.trim();
+  if(v!==PW){document.getElementById('g-err').textContent='Incorrect access code.';document.getElementById('g-code').value='';document.getElementById('g-code').focus();return;}
+  if(!k||!k.startsWith('sk-')){document.getElementById('g-err').textContent='Please enter a valid Anthropic API key.';document.getElementById('g-apikey').focus();return;}
+  AK=k;show();sessionStorage.setItem('ra','1');sessionStorage.setItem('ak',k);
 }
 function show(){document.getElementById('gate').style.display='none';document.getElementById('app').style.display='flex';}
 function logout(){sessionStorage.removeItem('ra');document.getElementById('gate').style.display='flex';document.getElementById('app').style.display='none';document.getElementById('g-code').value='';document.getElementById('g-err').textContent='';}
-if(sessionStorage.getItem('ra')==='1')show();
+if(sessionStorage.getItem('ra')==='1'&&sessionStorage.getItem('ak')){AK=sessionStorage.getItem('ak');show();}
 
 // NAV
 function nav(id,btn){document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});document.querySelectorAll('.nav-btn').forEach(function(b){b.classList.remove('active');});document.getElementById('page-'+id).classList.add('active');btn.classList.add('active');}
