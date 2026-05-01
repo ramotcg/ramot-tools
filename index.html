@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RAMOT Deal Tools</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+:root{--navy:#1a2744;--navy-light:#243460;--copper:#b07d4a;--cream:#f8f4ee;--white:#fff;--text:#1a2744;--text-mid:#4a5568;--text-light:#8a96a8;--border:rgba(26,39,68,0.12);--border-mid:rgba(26,39,68,0.22);--success:#2d6a4f;--success-bg:#d8f3dc;--warning:#7d5a00;--warning-bg:#fff3cd;--danger:#7d1a1a;--danger-bg:#fde8e8;--r:8px;--rl:12px}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Jost',sans-serif;background:var(--cream);color:var(--text);min-height:100vh}
+#gate{position:fixed;inset:0;background:var(--navy);display:flex;align-items:center;justify-content:center;z-index:1000;padding:1rem}
+#app{display:none;min-height:100vh;flex-direction:column}
+.gate-box{background:var(--white);border-radius:var(--rl);padding:2.5rem 2rem;width:100%;max-width:360px;text-align:center}
+.g-dots{display:flex;gap:4px;align-items:center;justify-content:center;margin-bottom:6px}
+.g-dot{width:8px;height:8px;border-radius:50%;background:var(--copper)}
+.g-diamond{width:9px;height:9px;background:var(--copper);transform:rotate(45deg);margin-left:2px}
+.g-name{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;color:var(--navy);letter-spacing:0.05em;margin-bottom:4px}
+.g-tagline{font-size:11px;color:var(--text-light);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:1.75rem}
+.g-label{font-size:13px;color:var(--text-mid);margin-bottom:10px}
+.g-input{width:100%;height:46px;border:1px solid var(--border-mid);border-radius:var(--r);padding:0 14px;font-family:'Jost',sans-serif;font-size:16px;color:var(--text);background:var(--cream);letter-spacing:0.15em;text-align:center;outline:none}
+.g-input:focus{border-color:var(--copper);background:var(--white)}
+.g-btn{width:100%;height:46px;background:var(--navy);color:var(--white);border:none;border-radius:var(--r);font-family:'Jost',sans-serif;font-size:14px;font-weight:500;cursor:pointer;margin-top:10px}
+.g-btn:hover{background:var(--navy-light)}
+.g-err{font-size:12px;color:var(--danger);margin-top:8px;min-height:18px}
+.topbar{background:var(--navy);padding:0 1.5rem;height:54px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.tb-left{display:flex;align-items:center;gap:10px}
+.tb-dots{display:flex;gap:3px;align-items:center}
+.tb-dot{width:6px;height:6px;border-radius:50%;background:var(--copper)}
+.tb-diamond{width:7px;height:7px;background:var(--copper);transform:rotate(45deg);margin-left:1px}
+.tb-name{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:600;color:var(--white);letter-spacing:0.06em}
+.tb-sep{width:1px;height:14px;background:rgba(255,255,255,0.2);margin:0 10px}
+.tb-sub{font-size:11px;color:rgba(255,255,255,0.45)}
+.logout{background:none;border:1px solid rgba(255,255,255,0.2);color:rgba(255,255,255,0.55);font-family:'Jost',sans-serif;font-size:11px;padding:5px 11px;border-radius:var(--r);cursor:pointer}
+.nav{background:var(--white);border-bottom:1px solid var(--border);display:flex;padding:0 1.5rem}
+.nav-btn{padding:14px 18px;font-size:13px;font-weight:500;color:var(--text-light);cursor:pointer;border-bottom:2px solid transparent;background:none;border-top:none;border-left:none;border-right:none;font-family:'Jost',sans-serif}
+.nav-btn.active{color:var(--navy);border-bottom-color:var(--copper)}
+.main{max-width:1080px;margin:0 auto;padding:1.75rem 1.5rem;flex:1}
+.page{display:none}.page.active{display:block}
+.page-title{font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:600;color:var(--navy);margin-bottom:4px}
+.page-sub{font-size:12px;color:var(--text-light);margin-bottom:1.5rem}
+.card{background:var(--white);border:1px solid var(--border);border-radius:var(--rl);padding:1.2rem;margin-bottom:10px}
+.ct{font-size:10px;font-weight:500;color:var(--text-light);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px}
+.field{margin-bottom:8px}
+.field label{display:block;font-size:12px;color:var(--text-mid);margin-bottom:3px;font-weight:500}
+.field input,.field select{width:100%;height:35px;padding:0 10px;border:1px solid var(--border-mid);border-radius:var(--r);font-family:'Jost',sans-serif;font-size:13px;color:var(--text);background:var(--cream);outline:none}
+.field input:focus,.field select:focus{border-color:var(--copper);background:var(--white)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ttabs{display:flex;gap:4px;margin-bottom:10px}
+.ttab{flex:1;height:30px;border:1px solid var(--border-mid);border-radius:var(--r);background:var(--white);color:var(--text-mid);font-family:'Jost',sans-serif;font-size:12px;cursor:pointer}
+.ttab.on{background:var(--navy);color:var(--white);border-color:var(--navy)}
+.btn-primary{height:38px;background:var(--navy);color:var(--white);border:none;border-radius:var(--r);font-family:'Jost',sans-serif;font-size:13px;font-weight:500;cursor:pointer;padding:0 1.25rem}
+.btn-secondary{height:38px;background:var(--white);color:var(--text-mid);border:1px solid var(--border-mid);border-radius:var(--r);font-family:'Jost',sans-serif;font-size:13px;cursor:pointer;padding:0 1.25rem}
+.btn-row{display:flex;gap:8px;margin-top:10px}
+.add-link{background:none;border:none;color:var(--copper);font-family:'Jost',sans-serif;font-size:12px;cursor:pointer;padding:3px 0;display:block}
+.extra-row{display:flex;gap:5px;margin-top:5px;align-items:center}
+.extra-row input{flex:1;height:30px;padding:0 8px;border:1px solid var(--border-mid);border-radius:var(--r);font-family:'Jost',sans-serif;font-size:12px;background:var(--cream);outline:none}
+.rm-btn{width:24px;height:24px;border:1px solid var(--border-mid);border-radius:4px;background:none;color:var(--text-light);cursor:pointer;font-size:14px;flex-shrink:0}
+.divider{height:1px;background:var(--border);margin:10px 0}
+.calc-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+@media(max-width:700px){.calc-grid{grid-template-columns:1fr}}
+.mg{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:10px}
+.m{background:var(--cream);border-radius:var(--r);padding:9px 11px}
+.ml{font-size:10px;color:var(--text-light);margin-bottom:2px}
+.mv{font-size:15px;font-weight:500;color:var(--text)}
+.mv-sub{font-size:10px;color:var(--text-light);margin-top:1px}
+.mv.good{color:var(--success)}.mv.warn{color:var(--warning)}.mv.bad{color:var(--danger)}
+.dscr-bar{height:4px;background:var(--border);border-radius:2px;margin-top:5px;overflow:hidden}
+.dscr-fill{height:100%;border-radius:2px}
+.ms{font-size:10px;color:var(--text-light);margin-top:2px}
+.kv{width:100%;font-size:13px;border-collapse:collapse}
+.kv td{padding:5px 0;vertical-align:top}
+.kv td:first-child{color:var(--text-mid);width:48%;padding-right:10px}
+.kv td:last-child{color:var(--text);font-weight:500}
+.kv tr:not(:last-child) td{border-bottom:1px solid var(--border)}
+.flag-list{list-style:none;display:flex;flex-direction:column;gap:5px}
+.flag{display:flex;gap:8px;align-items:flex-start;font-size:12px;padding:7px 9px;border-radius:var(--r);line-height:1.5}
+.flag.green{background:var(--success-bg);color:var(--success)}
+.flag.amber{background:var(--warning-bg);color:var(--warning)}
+.flag.red{background:var(--danger-bg);color:var(--danger)}
+.fdot{width:5px;height:5px;border-radius:50%;flex-shrink:0;margin-top:5px}
+.flag.green .fdot{background:var(--success)}.flag.amber .fdot{background:#b07d00}.flag.red .fdot{background:var(--danger)}
+.cim-tabs{display:flex;gap:2px;border-bottom:1px solid var(--border);margin-bottom:12px}
+.cim-tab{padding:8px 15px;font-size:13px;color:var(--text-light);background:none;border:none;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;font-family:'Jost',sans-serif;font-weight:500}
+.cim-tab.active{color:var(--navy);border-bottom-color:var(--copper)}
+.cim-panel{display:none}.cim-panel.active{display:block}
+.upload-zone{border:2px dashed var(--border-mid);border-radius:var(--rl);padding:2rem 1.5rem;text-align:center;cursor:pointer;background:var(--cream)}
+.upload-zone:hover{border-color:var(--copper)}
+.upload-zone input{display:none}
+.uz-label{font-size:14px;color:var(--text);margin-bottom:3px}
+.uz-sub{font-size:12px;color:var(--text-light)}
+.file-chip{display:inline-flex;align-items:center;gap:7px;background:var(--white);border:1px solid var(--border);border-radius:var(--r);padding:5px 11px;margin-top:8px;font-size:12px}
+.file-chip button{background:none;border:none;color:var(--text-light);cursor:pointer;font-size:15px;line-height:1}
+.loading{text-align:center;padding:3rem 1rem}
+.spinner{width:30px;height:30px;border:2px solid var(--border);border-top-color:var(--copper);border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 12px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.l-msg{font-size:14px;color:var(--text);margin-bottom:3px}
+.l-sub{font-size:12px;color:var(--text-light)}
+.prog{height:3px;background:var(--border);border-radius:2px;margin-top:10px;overflow:hidden}
+.prog-fill{height:100%;background:var(--copper);border-radius:2px;transition:width 0.5s}
+.deal-header{background:var(--navy);border-radius:var(--rl);padding:1.2rem 1.4rem;margin-bottom:10px;color:var(--white)}
+.dh-name{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600}
+.dh-meta{font-size:12px;color:rgba(255,255,255,0.5);margin-top:2px}
+.dh-score-row{display:flex;align-items:center;gap:12px;margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.12)}
+.score-badge{width:50px;height:50px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:500;flex-shrink:0}
+.score-badge.strong{background:var(--success-bg);color:var(--success)}
+.score-badge.moderate{background:var(--warning-bg);color:var(--warning)}
+.score-badge.weak{background:var(--danger-bg);color:var(--danger)}
+.dh-verdict{font-size:14px;font-weight:500}.dh-rationale{font-size:12px;color:rgba(255,255,255,0.55);margin-top:2px}
+.bm-ctx{font-size:12px;color:var(--text-mid);line-height:1.6}
+.err-box{background:var(--danger-bg);border-radius:var(--r);padding:10px 12px;font-size:13px;color:var(--danger);margin-top:8px}
+.sba-pill{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:500;margin-bottom:10px}
+.sba-pill.yes{background:var(--success-bg);color:var(--success)}.sba-pill.no{background:var(--danger-bg);color:var(--danger)}.sba-pill.maybe{background:var(--warning-bg);color:var(--warning)}
+.reset-link{background:none;border:none;color:var(--copper);font-family:'Jost',sans-serif;font-size:13px;cursor:pointer;padding:0;margin-top:8px;display:inline-block}
+.prose{font-size:13px;color:var(--text);line-height:1.65}
+</style>
+</head>
+<body>
+
+<div id="gate" style="position:fixed;inset:0;background:#1a2744;display:flex;align-items:center;justify-content:center;z-index:1000;padding:1rem">
+  <div class="gate-box">
+    <div class="g-dots"><div class="g-dot"></div><div class="g-dot"></div><div class="g-dot"></div><div class="g-dot"></div><div class="g-dot"></div><div class="g-diamond"></div></div>
+    <div class="g-name">RAMOT</div>
+    <div class="g-tagline">Consulting Group — Deal Tools</div>
+    <div class="g-label">Enter your access code to continue</div>
+    <input class="g-input" type="password" id="g-code" placeholder="••••••" onkeydown="if(event.key==='Enter')gateSubmit()">
+    <button class="g-btn" onclick="gateSubmit()">Access Tools</button>
+    <div class="g-err" id="g-err"></div>
+  </div>
+</div>
+
+<div id="app" style="display:none;min-height:100vh;flex-direction:column">
+  <div class="topbar">
+    <div class="tb-left">
+      <div class="tb-dots"><div class="tb-dot"></div><div class="tb-dot"></div><div class="tb-dot"></div><div class="tb-dot"></div><div class="tb-dot"></div><div class="tb-diamond"></div></div>
+      <div class="tb-name">RAMOT</div><div class="tb-sep"></div><div class="tb-sub">Deal Tools</div>
+    </div>
+    <button class="logout" onclick="logout()">Sign out</button>
+  </div>
+  <div class="nav">
+    <button class="nav-btn active" onclick="nav('calc',this)">Deal Calculator</button>
+    <button class="nav-btn" onclick="nav('cim',this)">CIM Analyzer</button>
+  </div>
+  <div class="main">
+
+    <div class="page active" id="page-calc">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:1.25rem">
+        <div><div class="page-title">Deal Calculator</div><div class="page-sub" style="margin-bottom:0">Analyze financing, DSCR, and valuation multiples</div></div>
+        <div style="display:flex;gap:8px"><button class="btn-primary" onclick="calc()">Calculate</button><button class="btn-secondary" onclick="clr()">Clear</button></div>
+      </div>
+      <div class="calc-grid">
+        <div>
+          <div class="card">
+            <div class="ct">Business details</div>
+            <div class="field"><label>Industry</label><select id="ind" onchange="ubm()"><option value="">Select industry...</option><option value="services">Business Services</option><option value="manufacturing">Manufacturing</option><option value="construction">Construction</option><option value="distribution">Distribution / Wholesale</option><option value="healthcare">Healthcare / Medical</option><option value="technology">Technology / SaaS</option><option value="restaurant">Restaurant / Food Service</option><option value="retail">Retail</option><option value="automotive">Automotive</option><option value="hvac">HVAC / Mechanical</option><option value="landscaping">Landscaping</option><option value="other">Other</option></select></div>
+            <div class="field"><label>Asking price</label><input type="number" id="price" placeholder="500,000"></div>
+            <div class="field"><label>Revenue</label><input type="number" id="rev" placeholder="1,000,000"></div>
+            <div class="field"><label>Cash flow (SDE)</label><input type="number" id="sde" placeholder="150,000"></div>
+          </div>
+          <div class="card">
+            <div class="ct">Bank financing</div>
+            <div class="ttabs"><button class="ttab on" id="t-sba" onclick="ft('sba')">SBA</button><button class="ttab" id="t-cst" onclick="ft('custom')">Custom</button><button class="ttab" id="t-non" onclick="ft('none')">None</button></div>
+            <div id="bankf">
+              <div class="two"><div class="field"><label>Rate (%)</label><input type="number" id="rate" value="9.5" step="0.1"></div><div class="field"><label>Term (yrs)</label><input type="number" id="term" value="10"></div></div>
+              <div class="two"><div class="field"><label>Down (%)</label><input type="number" id="dpct" value="10" step="1" oninput="sd('p')"></div><div class="field"><label>Down ($)</label><input type="number" id="damt" placeholder="Auto" oninput="sd('a')"></div></div>
+              <div class="field"><label>Loan override</label><input type="number" id="loan" placeholder="Auto"></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="ct">Seller financing</div>
+            <div class="field"><label>Amount ($)</label><input type="number" id="samt" placeholder="0"></div>
+            <div class="two"><div class="field"><label>Rate (%)</label><input type="number" id="srate" value="6" step="0.1"></div><div class="field"><label>Term (yrs)</label><input type="number" id="sterm" value="5"></div></div>
+          </div>
+          <div class="card">
+            <div class="ct">Additional items</div>
+            <div style="font-size:11px;color:var(--text-light);margin-bottom:5px">Annual expenses (reduce SDE)</div>
+            <div id="expl"></div><button class="add-link" onclick="ae('exp')">+ Add expense</button>
+            <div class="divider"></div>
+            <div style="font-size:11px;color:var(--text-light);margin-bottom:5px">One-time closing costs</div>
+            <div id="clsl"></div><button class="add-link" onclick="ae('cls')">+ Add closing cost</button>
+          </div>
+          <div class="btn-row"><button class="btn-primary" onclick="calc()">Calculate</button><button class="btn-secondary" onclick="clr()">Clear</button></div>
+        </div>
+        <div>
+          <div class="card">
+            <div class="ct">Valuation</div>
+            <div id="bmbanner" style="display:none;background:var(--cream);border-radius:var(--r);padding:8px 10px;margin-bottom:10px;font-size:12px;color:var(--text-mid)"></div>
+            <div class="mg">
+              <div class="m"><div class="ml">Asking price</div><div class="mv" id="r-price">—</div></div>
+              <div class="m"><div class="ml">SDE</div><div class="mv" id="r-sde">—</div></div>
+              <div class="m"><div class="ml">SDE multiple</div><div class="mv" id="r-sdem">—</div><div class="mv-sub" id="r-sdem-b"></div></div>
+              <div class="m"><div class="ml">Revenue multiple</div><div class="mv" id="r-revm">—</div><div class="mv-sub" id="r-revm-b"></div></div>
+              <div class="m"><div class="ml">Revenue</div><div class="mv" id="r-rev">—</div></div>
+              <div class="m"><div class="ml">CF margin</div><div class="mv" id="r-margin">—</div></div>
+              <div class="m"><div class="ml">Default rate (industry)</div><div class="mv" id="r-dr">—</div><div class="mv-sub" id="r-dr-n">Select industry above</div></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="ct">Financing structure</div>
+            <div class="mg">
+              <div class="m"><div class="ml">Total acq. cost</div><div class="mv" id="r-total">—</div></div>
+              <div class="m"><div class="ml">Cash down</div><div class="mv" id="r-down">—</div></div>
+              <div class="m"><div class="ml">Total debt</div><div class="mv" id="r-debt">—</div></div>
+              <div class="m"><div class="ml">SBA guaranty fee</div><div class="mv" id="r-gfee">—</div></div>
+              <div class="m"><div class="ml">Monthly payment</div><div class="mv" id="r-mo">—</div></div>
+              <div class="m"><div class="ml">Annual payment</div><div class="mv" id="r-ann">—</div></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="ct">Deal health</div>
+            <div class="mg">
+              <div class="m"><div class="ml">DSCR</div><div class="mv" id="r-dscr">—</div><div class="dscr-bar"><div class="dscr-fill" id="r-dscr-b" style="width:0%"></div></div><div class="ms" id="r-dscr-n"></div></div>
+              <div class="m"><div class="ml">Payback period</div><div class="mv" id="r-pay">—</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="page" id="page-cim">
+      <div class="page-title">CIM Analyzer</div>
+      <div class="page-sub">Upload a CIM for AI-powered deal analysis with market benchmarks</div>
+      <div id="cim-up">
+        <div class="upload-zone" onclick="document.getElementById('cimf').click()" ondragover="dg(event,true)" ondragleave="dg(event,false)" ondrop="dp(event)">
+          <input type="file" id="cimf" accept=".pdf" onchange="of(this.files[0])">
+          <div class="uz-label">Upload CIM or offering memorandum</div>
+          <div class="uz-sub">PDF up to 50MB — drag and drop or click to browse</div>
+          <div id="cchip"></div>
+        </div>
+        <div id="cerr"></div>
+        <div class="btn-row" style="margin-top:10px"><button class="btn-primary" id="cbtn" disabled onclick="run()" style="flex:2">Analyze CIM</button></div>
+      </div>
+      <div id="cim-load" style="display:none"><div class="card"><div class="loading"><div class="spinner"></div><div class="l-msg" id="lmsg">Analyzing document...</div><div class="l-sub">This may take 20-30 seconds</div><div class="prog"><div class="prog-fill" id="prog" style="width:5%"></div></div></div></div></div>
+      <div id="cim-res" style="display:none">
+        <div class="deal-header"><div class="dh-name" id="cr-n">—</div><div class="dh-meta" id="cr-m">—</div><div class="dh-score-row"><div class="score-badge" id="cr-b">—</div><div><div class="dh-verdict" id="cr-v">—</div><div class="dh-rationale" id="cr-r">—</div></div></div></div>
+        <div class="cim-tabs"><button class="cim-tab active" onclick="ct('overview',this)">Overview</button><button class="cim-tab" onclick="ct('financials',this)">Financials</button><button class="cim-tab" onclick="ct('sba',this)">SBA</button><button class="cim-tab" onclick="ct('nextsteps',this)">Next steps</button></div>
+        <div class="cim-panel active" id="cp-overview"><div class="card"><div class="ct">Business snapshot</div><table class="kv" id="cr-snap"></table></div><div class="card"><div class="ct">Strengths</div><ul class="flag-list" id="cr-str"></ul></div><div class="card"><div class="ct">Risks</div><ul class="flag-list" id="cr-risk"></ul></div><div class="card"><div class="ct">Market context</div><div class="bm-ctx" id="cr-mkt">—</div></div></div>
+        <div class="cim-panel" id="cp-financials"><div class="mg" id="cr-fm"></div><div class="card"><div class="ct">Financial detail</div><table class="kv" id="cr-ft"></table></div><div class="card"><div class="ct">Benchmark comparison</div><div class="bm-ctx" id="cr-bc">—</div></div><div class="card"><div class="ct">Observations</div><div class="prose" id="cr-fn"></div></div></div>
+        <div class="cim-panel" id="cp-sba"><div class="card"><div class="ct">SBA eligibility</div><div id="cr-sp"></div><table class="kv" id="cr-st"></table></div><div class="card"><div class="ct">DSCR analysis</div><div class="prose" id="cr-da"></div></div><div class="card"><div class="ct">SBA considerations</div><ul class="flag-list" id="cr-sf"></ul></div></div>
+        <div class="cim-panel" id="cp-nextsteps"><div class="card"><div class="ct">Due diligence</div><ul class="flag-list" id="cr-dd"></ul></div><div class="card"><div class="ct">Seller questions</div><ul class="flag-list" id="cr-sq"></ul></div><div class="card"><div class="ct">Next actions</div><ul class="flag-list" id="cr-na"></ul></div></div>
+        <button class="reset-link" onclick="rst()">← Analyze another CIM</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+// CONFIG - set your API key here
+var AK='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';
+
+// GATE
+var PW='RAMOT6';
+function gateSubmit(){
+  var v=document.getElementById('g-code').value.trim().toUpperCase();
+  if(v===PW){show();sessionStorage.setItem('ra','1');}
+  else{document.getElementById('g-err').textContent='Incorrect access code.';document.getElementById('g-code').value='';document.getElementById('g-code').focus();}
+}
+function show(){document.getElementById('gate').style.display='none';document.getElementById('app').style.display='flex';}
+function logout(){sessionStorage.removeItem('ra');document.getElementById('gate').style.display='flex';document.getElementById('app').style.display='none';document.getElementById('g-code').value='';document.getElementById('g-err').textContent='';}
+if(sessionStorage.getItem('ra')==='1')show();
+
+// NAV
+function nav(id,btn){document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});document.querySelectorAll('.nav-btn').forEach(function(b){b.classList.remove('active');});document.getElementById('page-'+id).classList.add('active');btn.classList.add('active');}
+
+// BENCHMARKS
+var BM={services:{n:'Business Services',s:3.6,r:0.8,m:22,d:3.1},manufacturing:{n:'Manufacturing',s:3.2,r:0.6,m:18,d:4.2},construction:{n:'Construction',s:3.1,r:0.5,m:15,d:5.1},distribution:{n:'Distribution',s:3.3,r:0.4,m:12,d:3.8},healthcare:{n:'Healthcare',s:3.8,r:0.9,m:24,d:2.8},technology:{n:'Technology',s:4.2,r:1.2,m:28,d:2.5},restaurant:{n:'Restaurant',s:2.3,r:0.4,m:10,d:7.2},retail:{n:'Retail',s:2.5,r:0.4,m:11,d:6.1},automotive:{n:'Automotive',s:2.8,r:0.5,m:14,d:4.5},hvac:{n:'HVAC',s:3.3,r:0.6,m:18,d:3.9},landscaping:{n:'Landscaping',s:2.9,r:0.5,m:16,d:4.3},other:{n:'Other',s:3.44,r:0.6,m:16,d:4.0}};
+function ubm(){var i=document.getElementById('ind').value,b=document.getElementById('bmbanner');if(!i||!BM[i]){b.style.display='none';return;}var bm=BM[i];b.style.display='block';b.innerHTML='<strong>'+bm.n+'</strong> — SDE avg: <strong>'+bm.s+'x</strong> &nbsp;·&nbsp; Default rate: <strong>'+bm.d+'%</strong> &nbsp;·&nbsp; <span style="color:var(--text-light);font-size:11px">Peercomps/IBBA Q3 2025</span>';}
+
+// CALCULATOR
+var ft_='sba',ex_={exp:[],cls:[]};
+function ft(t){ft_=t;['sba','custom','none'].forEach(function(x){var id=x==='sba'?'t-sba':x==='custom'?'t-cst':'t-non';document.getElementById(id).className='ttab'+(x===t?' on':'');});document.getElementById('bankf').style.display=t==='none'?'none':'block';}
+function sd(f){var p=parseFloat(document.getElementById('price').value)||0;if(!p)return;if(f==='p'){document.getElementById('damt').value=Math.round(p*(parseFloat(document.getElementById('dpct').value)||0)/100)||'';}else{document.getElementById('dpct').value=p?((parseFloat(document.getElementById('damt').value)||0)/p*100).toFixed(1):'';}}
+function ae(t){var id=Date.now();ex_[t].push(id);var l=document.getElementById(t==='exp'?'expl':'clsl');var d=document.createElement('div');d.className='extra-row';d.id='ex'+id;d.innerHTML='<input type="text" placeholder="Label" style="width:40%"><input type="number" placeholder="Amount"><button class="rm-btn" onclick="re(\''+t+'\','+id+')">×</button>';l.appendChild(d);}
+function re(t,id){ex_[t]=ex_[t].filter(function(x){return x!==id;});var e=document.getElementById('ex'+id);if(e)e.remove();}
+function xt(t){return ex_[t].reduce(function(s,id){var e=document.getElementById('ex'+id);if(!e)return s;return s+(parseFloat(e.querySelectorAll('input')[1].value)||0);},0);}
+function gn(id){return parseFloat(document.getElementById(id).value)||0;}
+function fm(n){return(isNaN(n)||n==null)?'—':'$'+Math.round(n).toLocaleString();}
+function fx(n){return(!n||isNaN(n)||!isFinite(n))?'—':n.toFixed(2)+'x';}
+function fp(n){return isNaN(n)?'—':n.toFixed(1)+'%';}
+function sv(id,val,cls){var e=document.getElementById(id);e.textContent=val;e.className='mv'+(cls?' '+cls:'');}
+function pmt(r,y,pv){if(!r||!y||!pv)return 0;var m=r/12/100,n=y*12;return pv*(m*Math.pow(1+m,n))/(Math.pow(1+m,n)-1);}
+function gfee(l){return l<=150000?l*0.02:l<=700000?l*0.03:l*0.035;}
+function calc(){
+  var price=gn('price'),rev=gn('rev'),sde=gn('sde'),rate=gn('rate'),term=gn('term'),samt=gn('samt'),srate=gn('srate'),sterm=gn('sterm');
+  var dpct=(gn('dpct')||10)/100,damt=gn('damt')||(price*dpct);
+  var loan=gn('loan')||(price-damt-samt);if(loan<0)loan=0;
+  var addE=xt('exp'),addC=xt('cls');
+  var fee=ft_==='sba'?gfee(loan):0;
+  var tAcq=price+fee+addC,tDown=damt+fee+addC,tDebt=loan+samt;
+  var bPmt=ft_!=='none'?pmt(rate,term,loan):0,sPmt=samt?pmt(srate,sterm,samt):0;
+  var moT=bPmt+sPmt,annT=moT*12;
+  var adjSDE=sde-addE,dscr=annT>0?adjSDE/annT:null,payback=adjSDE>0?damt/adjSDE:null;
+  var sdeM=sde>0?price/sde:null,revM=rev>0?price/rev:null,margin=rev>0?sde/rev*100:null;
+  sv('r-price',fm(price));sv('r-sde',fm(sde));sv('r-rev',fm(rev));
+  sv('r-sdem',fx(sdeM));sv('r-revm',fx(revM));sv('r-margin',fp(margin));
+  sv('r-total',fm(tAcq));sv('r-down',fm(tDown));sv('r-debt',fm(tDebt));
+  sv('r-gfee',ft_==='sba'?fm(fee):'N/A');sv('r-mo',fm(moT));sv('r-ann',fm(annT));
+  if(dscr!==null&&isFinite(dscr)){var cls=dscr>=1.25?'good':dscr>=1.0?'warn':'bad';sv('r-dscr',dscr.toFixed(2)+'x',cls);var bar=document.getElementById('r-dscr-b');bar.style.width=Math.min(dscr/2.5*100,100)+'%';bar.style.background=dscr>=1.25?'#2d6a4f':dscr>=1.0?'#b07d00':'#7d1a1a';document.getElementById('r-dscr-n').textContent=dscr>=1.25?'Strong — above 1.25x':dscr>=1.0?'Marginal':'Below SBA minimum';}else{sv('r-dscr','—');}
+  sv('r-pay',payback?payback.toFixed(1)+' yrs':'—');
+  var ind=document.getElementById('ind').value,bm=ind?BM[ind]:null;
+  document.getElementById('r-sdem-b').innerHTML=bm&&sdeM?'<span style="color:'+(sdeM>bm.s?'var(--danger)':'var(--success)')+'">market avg '+bm.s+'x ('+(sdeM>bm.s?'above':'below')+')</span>':'';
+  document.getElementById('r-revm-b').innerHTML=bm&&revM?'<span style="color:var(--text-light)">market avg '+bm.r+'x</span>':'';
+  if(bm){sv('r-dr',bm.d.toFixed(1)+'%',bm.d>5?'bad':bm.d>3.5?'warn':'good');document.getElementById('r-dr-n').textContent='All industries avg: 4.0%';}
+  else{sv('r-dr','—');document.getElementById('r-dr-n').textContent='Select industry above';}
+}
+function clr(){
+  ['price','rev','sde','loan','damt','samt'].forEach(function(id){document.getElementById(id).value='';});
+  document.getElementById('dpct').value='10';document.getElementById('rate').value='9.5';document.getElementById('term').value='10';document.getElementById('srate').value='6';document.getElementById('sterm').value='5';
+  document.getElementById('expl').innerHTML='';document.getElementById('clsl').innerHTML='';ex_={exp:[],cls:[]};ft('sba');document.getElementById('ind').value='';
+  ['r-price','r-sde','r-rev','r-sdem','r-revm','r-margin','r-total','r-down','r-debt','r-gfee','r-mo','r-ann','r-dscr','r-pay'].forEach(function(id){sv(id,'—');});
+  ['r-sdem-b','r-revm-b'].forEach(function(id){document.getElementById(id).innerHTML='';});
+  document.getElementById('r-dscr-b').style.width='0%';document.getElementById('r-dscr-n').textContent='';
+  sv('r-dr','—');document.getElementById('r-dr-n').textContent='Select industry above';
+  document.getElementById('bmbanner').style.display='none';
+}
+
+// CIM
+var cimF=null;
+function dg(e,on){e.preventDefault();}
+function dp(e){e.preventDefault();if(e.dataTransfer.files[0])of(e.dataTransfer.files[0]);}
+function of(f){if(!f||f.type!=='application/pdf'){se('Please upload a PDF.');return;}cimF=f;document.getElementById('cerr').innerHTML='';document.getElementById('cchip').innerHTML='<div class="file-chip"><span>'+f.name+'</span><button onclick="cf(event)">×</button></div>';document.getElementById('cbtn').disabled=false;}
+function cf(e){e.stopPropagation();cimF=null;document.getElementById('cchip').innerHTML='';document.getElementById('cbtn').disabled=true;}
+function se(msg){document.getElementById('cerr').innerHTML='<div class="err-box">'+msg+'</div>';}
+function sp(p,m){document.getElementById('prog').style.width=p+'%';if(m)document.getElementById('lmsg').textContent=m;}
+
+async function run(){
+  if(!cimF)return;
+  document.getElementById('cim-up').style.display='none';
+  document.getElementById('cim-load').style.display='block';
+  document.getElementById('cim-res').style.display='none';
+  sp(5,'Reading PDF...');
+
+  var ab=await cimF.arrayBuffer();
+  var pdf=await pdfjsLib.getDocument({data:ab}).promise;
+  var txt='';
+  for(var i=1;i<=Math.min(pdf.numPages,15);i++){
+    var pg=await pdf.getPage(i);
+    var c=await pg.getTextContent();
+    txt+=c.items.map(function(s){return s.str;}).join(' ')+'\n';
+    sp(5+Math.round(i/Math.min(pdf.numPages,15)*35));
+  }
+  if(txt.trim().length<200){document.getElementById('cim-up').style.display='block';document.getElementById('cim-load').style.display='none';se('Not enough readable text found.');return;}
+
+  var t=txt.length>12000?txt.substring(0,12000)+'...[truncated]':txt;
+  sp(45,'Analyzing with AI...');
+
+  var prompt='Return ONLY a JSON object analyzing this business CIM. No text outside the JSON.\n\n{"businessName":"","industry":"","location":"","score":70,"scoreVerdict":"","scoreRationale":"","snapshot":[{"label":"Business type","value":""},{"label":"Asking price","value":""},{"label":"Revenue","value":""},{"label":"SDE","value":""},{"label":"Employees","value":""},{"label":"Years operating","value":""},{"label":"Reason for sale","value":""},{"label":"Customer concentration","value":""}],"strengths":[{"text":"","severity":"green"},{"text":"","severity":"green"}],"risks":[{"text":"","severity":"red"},{"text":"","severity":"amber"}],"marketContext":"","financialMetrics":[{"label":"Asking price","value":"","benchmark":null},{"label":"Revenue","value":"","benchmark":null},{"label":"SDE","value":"","benchmark":null},{"label":"SDE multiple","value":"","benchmark":"market avg 3.44x"}],"financialTable":[{"label":"Revenue Y1","value":""},{"label":"Revenue Y2","value":""},{"label":"Revenue Y3","value":""},{"label":"Adj SDE","value":""},{"label":"FF&E","value":""}],"benchmarkComparison":"","financialNotes":"","sbaEligible":"Yes","sbaTable":[{"label":"Loan type","value":"SBA 7(a)"},{"label":"Est loan","value":""},{"label":"Est down","value":""},{"label":"Rate","value":"9.5%"},{"label":"Est DSCR","value":""}],"dscrAnalysis":"","sbaFlags":[{"text":"","severity":"green"}],"dueDiligence":[{"text":"","severity":"amber"},{"text":"","severity":"amber"}],"sellerQuestions":[{"text":"","severity":"amber"},{"text":"","severity":"amber"}],"nextActions":[{"text":"","severity":"green"},{"text":"","severity":"green"}]}\n\nRules: score=0-100, severity=green/amber/red, missing="Not disclosed", DSCR=90%LTV 9.5% 10yr.\n\nCIM:\n'+t;
+
+  try{
+    var resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':AK,'anthropic-version':'2023-06-01'},
+      body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:8192,messages:[{role:'user',content:prompt}]})
+    });
+    var data=await resp.json();
+    if(!resp.ok)throw new Error(data.error&&data.error.message?data.error.message:'Error '+resp.status);
+    var raw=data.content.filter(function(b){return b.type==='text';}).map(function(b){return b.text;}).join('');
+    var clean=raw.replace(/```json|```/g,'').trim();
+    if(!clean.endsWith('}')){var lb=clean.lastIndexOf('}');if(lb>0)clean=clean.substring(0,lb+1);}
+    var result=JSON.parse(clean);
+    sp(100);
+    rend(result);
+    document.getElementById('cim-load').style.display='none';
+    document.getElementById('cim-res').style.display='block';
+  }catch(e){
+    document.getElementById('cim-up').style.display='block';
+    document.getElementById('cim-load').style.display='none';
+    se('Analysis failed: '+e.message);
+  }
+}
+
+function rend(r){
+  document.getElementById('cr-n').textContent=r.businessName||'Unnamed business';
+  document.getElementById('cr-m').textContent=[r.industry,r.location].filter(Boolean).join(' · ');
+  var score=r.score||0,badge=document.getElementById('cr-b');
+  badge.textContent=score;badge.className='score-badge '+(score>=70?'strong':score>=50?'moderate':'weak');
+  document.getElementById('cr-v').textContent=r.scoreVerdict||'';
+  document.getElementById('cr-r').textContent=r.scoreRationale||'';
+  rkv('cr-snap',r.snapshot||[]);rfl('cr-str',r.strengths||[]);rfl('cr-risk',r.risks||[]);
+  document.getElementById('cr-mkt').textContent=r.marketContext||'—';
+  var mg=document.getElementById('cr-fm');mg.innerHTML='';
+  (r.financialMetrics||[]).forEach(function(m){mg.innerHTML+='<div class="m"><div class="ml">'+m.label+'</div><div class="mv">'+m.value+'</div>'+(m.benchmark?'<div class="mv-sub">'+m.benchmark+'</div>':'')+'</div>';});
+  rkv('cr-ft',r.financialTable||[]);
+  document.getElementById('cr-bc').textContent=r.benchmarkComparison||'—';
+  document.getElementById('cr-fn').innerHTML='<p>'+(r.financialNotes||'')+'</p>';
+  var el=r.sbaEligible||'Unknown',cls=(el==='Yes'||el==='Likely')?'yes':(el==='No'||el==='Unlikely')?'no':'maybe';
+  document.getElementById('cr-sp').innerHTML='<span class="sba-pill '+cls+'">SBA eligible: '+el+'</span>';
+  rkv('cr-st',r.sbaTable||[]);
+  document.getElementById('cr-da').innerHTML='<p>'+(r.dscrAnalysis||'')+'</p>';
+  rfl('cr-sf',r.sbaFlags||[]);rfl('cr-dd',r.dueDiligence||[]);rfl('cr-sq',r.sellerQuestions||[]);rfl('cr-na',r.nextActions||[]);
+}
+function rkv(id,rows){var t=document.getElementById(id);t.innerHTML='';(rows||[]).forEach(function(r){t.innerHTML+='<tr><td>'+r.label+'</td><td>'+r.value+'</td></tr>';});}
+function rfl(id,items){var ul=document.getElementById(id);ul.innerHTML='';(items||[]).forEach(function(item){ul.innerHTML+='<li class="flag '+(item.severity||'amber')+'"><span class="fdot"></span><span>'+item.text+'</span></li>';});}
+function ct(name,btn){document.querySelectorAll('.cim-tab').forEach(function(b){b.classList.remove('active');});document.querySelectorAll('.cim-panel').forEach(function(p){p.classList.remove('active');});btn.classList.add('active');document.getElementById('cp-'+name).classList.add('active');}
+function rst(){cimF=null;document.getElementById('cchip').innerHTML='';document.getElementById('cbtn').disabled=true;document.getElementById('cerr').innerHTML='';document.getElementById('cim-res').style.display='none';document.getElementById('cim-up').style.display='block';ct('overview',document.querySelector('.cim-tab'));}
+</script>
+</body>
+</html>
