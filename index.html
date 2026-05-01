@@ -660,12 +660,20 @@ function renderMemoPDF(raw, bizName, industry, score, verdict, snapData, finData
   '<div class="memo-footer-note">Confidential — For internal use only</div>'+
   '</div>'+
   '</div>'+
-  '<button class="print-btn" onclick="window.print()">⬇ Save as PDF</button>';
+  '<button class="print-btn" onclick="printMemo()">⬇ Save as PDF</button>';
 
   document.getElementById('memo-out').innerHTML=html;
 }
 
-function printMemo(){window.print();}
+function printMemo(){
+  // Add print styles temporarily and print the current page
+  var style=document.createElement('style');
+  style.id='print-style';
+  style.textContent='@media print{#gate,#app>.topbar,#app>.nav,.btnp,.btns,.nb,.signout,#memobtn,#cim-up,#cim-load,.ctabs,.cpanel,.dhead,#pg-calc,.psub,.ptitle{display:none!important}#app{display:block!important}#pg-cim{display:block!important}#cim-res{display:block!important}#memo-out{display:block!important}body{background:#fff!important}.print-btn{display:none!important}.memo-wrap{max-width:none!important}@page{margin:0;size:letter}}';
+  document.head.appendChild(style);
+  window.print();
+  setTimeout(function(){var s=document.getElementById('print-style');if(s)s.remove();},2000);
+}
 </script>
 </body>
 </html>
