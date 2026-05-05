@@ -7,6 +7,7 @@
 <title>RAMOT Deal Tools</title>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
 <style>
 :root{--navy:#1a2744;--nl:#243460;--copper:#b07d4a;--cream:#f8f4ee;--white:#fff;--text:#1a2744;--tm:#4a5568;--tl:#8a96a8;--b:rgba(26,39,68,0.12);--bm:rgba(26,39,68,0.22);--sg:#2d6a4f;--sbg:#d8f3dc;--sw:#7d5a00;--swbg:#fff3cd;--sd:#7d1a1a;--sdbg:#fde8e8;--r:8px;--rl:12px}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -230,7 +231,10 @@ body{font-family:'Jost',sans-serif;background:var(--cream);color:var(--text);min
       <div id="cim-res" style="display:none">
         <div class="dhead"><div class="dhn" id="cr-n">--</div><div class="dhm" id="cr-m">--</div><div class="dhsr"><div class="sbadge" id="cr-b">--</div><div><div class="dhv" id="cr-v">--</div><div class="dhr" id="cr-r">--</div></div></div></div>
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px">
-          <button class="btnp" id="memobtn" onclick="genMemo()" style="height:38px;font-size:13px">Generate Investment Memo</button>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btnp" id="memobtn" onclick="genMemo()" style="height:38px;font-size:13px">Generate Investment Memo</button>
+            <button class="btns" id="pptbtn" onclick="exportPPT()" style="height:38px;font-size:13px">&#8595; Export to PowerPoint</button>
+          </div>
           <button style="background:none;border:none;color:var(--copper);font-family:'Jost',sans-serif;font-size:13px;cursor:pointer;padding:0" onclick="resetCIM()">&#8592; Analyze another CIM</button>
         </div>
         <div id="memo-load" style="display:none;margin-bottom:12px"><div class="card"><div class="loading"><div class="spinner"></div><div class="lmsg" id="mlmsg">Generating investment memo...</div><div class="lsub">Analyzing market data and investment thesis</div><div class="prog"><div class="progfill" id="mprog" style="width:5%"></div></div></div></div></div>
@@ -699,6 +703,116 @@ function buildMemoPDF(raw,bizName,industry,score,verdict,snapData,finData){
     '</body></html>';
 
   return html;
+}
+
+// POWERPOINT EXPORT
+async function exportPPT(){
+  var r=cimData;
+  if(!r||!r.businessName){alert('Please analyze a CIM first.');return;}
+
+  var btn=document.getElementById('pptbtn');
+  btn.disabled=true;btn.textContent='Generating...';
+
+  var prs=new PptxGenJS();
+  prs.layout='LAYOUT_WIDE';
+
+  var NAVY='1a2744',COPPER='b07d4a',CREAM='f8f4ee',WHITE='ffffff',GRAY='4a5568',LTGRAY='e2e8f0';
+  var today=new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+  var score=r.score||0;
+
+  function addHeader(slide,title){
+    slide.addShape(prs.ShapeType.rect,{x:0,y:0,w:'100%',h:0.7,fill:{color:NAVY}});
+    slide.addText('RAMOT Consulting Group',{x:0.3,y:0.12,w:5,h:0.45,fontSize:11,color:COPPER,fontFace:'Arial',bold:true,charSpacing:2});
+    slide.addText(title,{x:5,y:0.12,w:7.7,h:0.45,fontSize:11,color:'aaaaaa',fontFace:'Arial',align:'right'});
+  }
+  function addFooter(slide,biz){
+    slide.addShape(prs.ShapeType.rect,{x:0,y:7.1,w:'100%',h:0.4,fill:{color:CREAM}});
+    slide.addText(biz+' — Confidential',{x:0.3,y:7.15,w:9,h:0.3,fontSize:9,color:GRAY,fontFace:'Arial'});
+    slide.addText(today,{x:9,y:7.15,w:3.7,h:0.3,fontSize:9,color:GRAY,fontFace:'Arial',align:'right'});
+  }
+
+  // SLIDE 1: Title
+  var s1=prs.addSlide();
+  s1.addShape(prs.ShapeType.rect,{x:0,y:0,w:'100%',h:'100%',fill:{color:NAVY}});
+  s1.addShape(prs.ShapeType.rect,{x:0,y:0,w:0.12,h:'100%',fill:{color:COPPER}});
+  s1.addText('INVESTMENT MEMORANDUM',{x:1.0,y:1.8,w:10,h:0.35,fontSize:11,color:COPPER,fontFace:'Arial',bold:true,charSpacing:4});
+  s1.addText('CONFIDENTIAL',{x:1.0,y:2.15,w:10,h:0.3,fontSize:10,color:'888888',fontFace:'Arial',charSpacing:3});
+  s1.addText(r.businessName,{x:1.0,y:2.65,w:11,h:1.4,fontSize:36,color:WHITE,fontFace:'Georgia',bold:true});
+  s1.addText((r.industry||'')+'  |  RAMOT Consulting Group  |  '+today,{x:1.0,y:4.2,w:11,h:0.35,fontSize:12,color:'888888',fontFace:'Arial'});
+  s1.addShape(prs.ShapeType.ellipse,{x:1.0,y:4.85,w:0.9,h:0.9,fill:{color:score>=70?'1a3a2a':score>=50?'3a2a00':'3a0a0a'}});
+  s1.addText(String(score),{x:1.0,y:4.87,w:0.9,h:0.86,fontSize:20,color:score>=70?'4ade80':score>=50?'fbbf24':'f87171',fontFace:'Arial',bold:true,align:'center',valign:'middle'});
+  s1.addText(r.scoreVerdict||'',{x:2.1,y:4.87,w:9.5,h:0.45,fontSize:14,color:WHITE,fontFace:'Georgia',bold:true,valign:'middle'});
+  s1.addText('Overall deal score',{x:2.1,y:5.3,w:9.5,h:0.3,fontSize:11,color:'888888',fontFace:'Arial'});
+
+  // SLIDE 2: Business Snapshot
+  var s2=prs.addSlide();
+  s2.addShape(prs.ShapeType.rect,{x:0,y:0,w:'100%',h:'100%',fill:{color:CREAM}});
+  addHeader(s2,'Business Snapshot');
+  addFooter(s2,r.businessName);
+  s2.addText('Business Snapshot',{x:0.4,y:0.85,w:12,h:0.55,fontSize:22,color:NAVY,fontFace:'Georgia',bold:true});
+  var snap=r.snapshot||[];
+  var snapRows=snap.map(function(s){return [{text:s.label,options:{color:GRAY,fontSize:11,fontFace:'Arial'}},{text:s.value,options:{color:NAVY,fontSize:11,fontFace:'Arial',bold:true}}];});
+  if(snapRows.length)s2.addTable(snapRows,{x:0.4,y:1.55,w:12.2,border:{type:'solid',pt:0.5,color:LTGRAY},fill:WHITE,colW:[4,8.2],rowH:0.45});
+
+  // SLIDE 3: Strengths & Risks
+  var s3=prs.addSlide();
+  s3.addShape(prs.ShapeType.rect,{x:0,y:0,w:'100%',h:'100%',fill:{color:CREAM}});
+  addHeader(s3,'Strengths & Risks');
+  addFooter(s3,r.businessName);
+  s3.addText('Strengths & Risks',{x:0.4,y:0.85,w:12,h:0.55,fontSize:22,color:NAVY,fontFace:'Georgia',bold:true});
+  s3.addShape(prs.ShapeType.rect,{x:0.4,y:1.55,w:0.06,h:5,fill:{color:'2d6a4f'}});
+  s3.addText('STRENGTHS',{x:0.6,y:1.55,w:5.5,h:0.3,fontSize:9,color:'2d6a4f',fontFace:'Arial',bold:true,charSpacing:2});
+  (r.strengths||[]).slice(0,5).forEach(function(s,i){
+    s3.addShape(prs.ShapeType.ellipse,{x:0.65,y:2.05+i*0.75,w:0.1,h:0.1,fill:{color:'2d6a4f'}});
+    s3.addText(s.text,{x:0.9,y:1.98+i*0.75,w:5.3,h:0.58,fontSize:11,color:GRAY,fontFace:'Arial',valign:'middle'});
+  });
+  s3.addShape(prs.ShapeType.rect,{x:6.8,y:1.55,w:0.06,h:5,fill:{color:'7d1a1a'}});
+  s3.addText('RISKS',{x:7.0,y:1.55,w:5.6,h:0.3,fontSize:9,color:'7d1a1a',fontFace:'Arial',bold:true,charSpacing:2});
+  (r.risks||[]).slice(0,5).forEach(function(s,i){
+    s3.addShape(prs.ShapeType.ellipse,{x:7.05,y:2.05+i*0.75,w:0.1,h:0.1,fill:{color:'7d1a1a'}});
+    s3.addText(s.text,{x:7.3,y:1.98+i*0.75,w:5.3,h:0.58,fontSize:11,color:GRAY,fontFace:'Arial',valign:'middle'});
+  });
+
+  // SLIDE 4: Market Context
+  var s4=prs.addSlide();
+  s4.addShape(prs.ShapeType.rect,{x:0,y:0,w:'100%',h:'100%',fill:{color:CREAM}});
+  addHeader(s4,'Market Context');
+  addFooter(s4,r.businessName);
+  s4.addText('Market Context',{x:0.4,y:0.85,w:12,h:0.55,fontSize:22,color:NAVY,fontFace:'Georgia',bold:true});
+  s4.addShape(prs.ShapeType.rect,{x:0.4,y:1.55,w:0.06,h:5,fill:{color:COPPER}});
+  s4.addText(r.marketContext||'Not available.',{x:0.65,y:1.55,w:12,h:5,fontSize:13,color:GRAY,fontFace:'Georgia',valign:'top'});
+
+  // SLIDE 5: Financial Metrics
+  var s5=prs.addSlide();
+  s5.addShape(prs.ShapeType.rect,{x:0,y:0,w:'100%',h:'100%',fill:{color:CREAM}});
+  addHeader(s5,'Financial Metrics');
+  addFooter(s5,r.businessName);
+  s5.addText('Financial Metrics',{x:0.4,y:0.85,w:12,h:0.55,fontSize:22,color:NAVY,fontFace:'Georgia',bold:true});
+  (r.financialMetrics||[]).forEach(function(m,i){
+    var col=i%2,row=Math.floor(i/2);
+    var bx=0.4+col*6.5,by=1.55+row*1.45;
+    s5.addShape(prs.ShapeType.rect,{x:bx,y:by,w:6.0,h:1.25,fill:{color:WHITE},line:{color:LTGRAY,pt:0.5}});
+    s5.addText(m.label,{x:bx+0.15,y:by+0.08,w:5.7,h:0.28,fontSize:10,color:GRAY,fontFace:'Arial'});
+    s5.addText(m.value,{x:bx+0.15,y:by+0.36,w:5.7,h:0.48,fontSize:18,color:NAVY,fontFace:'Georgia',bold:true});
+    if(m.benchmark)s5.addText(m.benchmark,{x:bx+0.15,y:by+0.88,w:5.7,h:0.28,fontSize:10,color:COPPER,fontFace:'Arial'});
+  });
+
+  // SLIDE 6: Financial Detail & Benchmark
+  var s6=prs.addSlide();
+  s6.addShape(prs.ShapeType.rect,{x:0,y:0,w:'100%',h:'100%',fill:{color:CREAM}});
+  addHeader(s6,'Financial Detail');
+  addFooter(s6,r.businessName);
+  s6.addText('Financial Detail & Benchmark Comparison',{x:0.4,y:0.85,w:12,h:0.55,fontSize:22,color:NAVY,fontFace:'Georgia',bold:true});
+  var ft=r.financialTable||[];
+  var ftRows=ft.map(function(row){return [{text:row.label,options:{color:GRAY,fontSize:11,fontFace:'Arial'}},{text:row.value,options:{color:NAVY,fontSize:11,fontFace:'Arial',bold:true}}];});
+  if(ftRows.length)s6.addTable(ftRows,{x:0.4,y:1.55,w:5.8,border:{type:'solid',pt:0.5,color:LTGRAY},fill:WHITE,colW:[3,2.8],rowH:0.45});
+  s6.addShape(prs.ShapeType.rect,{x:6.8,y:1.55,w:0.06,h:5,fill:{color:COPPER}});
+  s6.addText('BENCHMARK COMPARISON',{x:7.0,y:1.55,w:5.6,h:0.3,fontSize:9,color:COPPER,fontFace:'Arial',bold:true,charSpacing:2});
+  s6.addText(r.benchmarkComparison||'Not available.',{x:7.0,y:2.0,w:5.6,h:4,fontSize:12,color:GRAY,fontFace:'Georgia',valign:'top'});
+
+  await prs.writeFile({fileName:'RAMOT_CIM_'+r.businessName.replace(/[^a-zA-Z0-9]/g,'_')+'.pptx'});
+  btn.disabled=false;
+  btn.textContent='\u2193 Export to PowerPoint';
 }
 </script>
 </body>
