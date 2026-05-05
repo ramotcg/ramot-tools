@@ -245,11 +245,8 @@ body{font-family:'Jost',sans-serif;background:var(--cream);color:var(--text);min
   </div>
 </div>
 <script>
-// RAMOT Deal Tools - Full JavaScript
-
 var PW='RAMOT6', AK='';
 
-// AUTH
 function gateSubmit(){
   var code=document.getElementById('gcode').value.trim().toUpperCase();
   var key=document.getElementById('gapikey').value.trim();
@@ -277,7 +274,6 @@ function signOut(){
   }
 })();
 
-// NAV
 function showPg(id,btn){
   document.querySelectorAll('.pg').forEach(function(p){p.classList.remove('on');});
   document.querySelectorAll('.nb').forEach(function(b){b.classList.remove('on');});
@@ -285,7 +281,6 @@ function showPg(id,btn){
   btn.classList.add('on');
 }
 
-// BENCHMARKS
 var BM={
   services:{n:'Business Services',s:3.6,r:0.8,m:22,d:3.1},
   manufacturing:{n:'Manufacturing',s:3.2,r:0.6,m:18,d:4.2},
@@ -307,7 +302,6 @@ function updBM(){
   b.innerHTML='<strong>'+bm.n+'</strong> \u2014 SDE avg: <strong>'+bm.s+'x</strong> \u00b7 Default rate: <strong>'+bm.d+'%</strong> \u00b7 <span style="color:var(--tl);font-size:11px">Peercomps/IBBA Q3 2025</span>';
 }
 
-// CALCULATOR
 var fin='sba',ex={exp:[],cls:[]};
 function setFin(t){
   fin=t;
@@ -382,7 +376,6 @@ function clrCalc(){
   document.getElementById('bmbanner').style.display='none';
 }
 
-// API
 pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 async function callAPI(msgs,model,maxTok){
   var resp=await fetch('https://api.anthropic.com/v1/messages',{
@@ -400,7 +393,6 @@ async function callAPI(msgs,model,maxTok){
   return data.content.filter(function(b){return b.type==='text';}).map(function(b){return b.text;}).join('');
 }
 
-// CIM
 var cimFile=null,cimData={};
 function onDrag(e,on){e.preventDefault();}
 function onDrop(e){e.preventDefault();if(e.dataTransfer.files[0])onFile(e.dataTransfer.files[0]);}
@@ -506,32 +498,23 @@ function resetCIM(){
   cimTab('overview',document.querySelector('.ctab'));
 }
 
-// INVESTMENT MEMO
+// FIXED: prose-only markdown parser - strips all markdown symbols
 function md(text){
-  if(!text)return '';
+  if(!text)return '<p style="color:#8a96a8;font-style:italic">Content not available.</p>';
+  // Strip markdown symbols
+  text=text.replace(/\*\*([^*]+)\*\*/g,'$1');
+  text=text.replace(/\*([^*]+)\*/g,'$1');
+  text=text.replace(/^#{1,6}\s+/gm,'');
+  text=text.replace(/^[-*]\s+/gm,'');
+  text=text.replace(/^--+$/gm,'');
   var out='';
-  var paras=text.split('\n\n');
+  var paras=text.split(/\n{2,}/);
   for(var i=0;i<paras.length;i++){
     var p=paras[i].trim();
-    if(!p)continue;
-    if(p.indexOf('## ')===0){out+='<div class="subsec">'+p.slice(3)+'</div>';continue;}
-    if(p.indexOf('### ')===0){out+='<div class="subsubsec">'+p.slice(4)+'</div>';continue;}
-    var plines=p.split('\n');
-    var isList=true;
-    for(var k=0;k<plines.length;k++){if(plines[k].trim()&&!plines[k].trim().match(/^[*\-]/)){isList=false;break;}}
-    if(isList&&plines.some(function(l){return l.trim().match(/^[*\-]/);})){
-      out+='<ul>';
-      for(var j=0;j<plines.length;j++){
-        var l=plines[j].trim().replace(/^[*\-]\s*/,'');
-        if(l)out+='<li>'+l.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>')+'</li>';
-      }
-      out+='</ul>';
-      continue;
-    }
-    p=p.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');
-    out+='<p>'+p+'</p>';
+    if(!p||p.length<3)continue;
+    out+='<p style="font-size:13px;line-height:1.75;color:#2d3748;margin:0 0 10px;font-family:Georgia,serif">'+p+'</p>';
   }
-  return out;
+  return out||'<p style="color:#8a96a8;font-style:italic">Content not available.</p>';
 }
 
 async function genMemo(){
@@ -556,16 +539,17 @@ async function genMemo(){
   document.getElementById('mprog').style.width='20%';
   document.getElementById('mlmsg').textContent='Writing investment memo...';
 
-  var prompt='You are a senior PE associate at RAMOT Consulting Group writing an Investment Memo for the Managing Director.\n\nBusiness: '+bizName+'\nIndustry: '+industry+'\nScore: '+score+'/100 - '+verdict+'\nAsking Price: '+(snapData['Asking price']||'Not disclosed')+'\nRevenue: '+(snapData['Revenue']||'Not disclosed')+'\nSDE: '+(snapData['SDE']||'Not disclosed')+'\nRevenue Y1: '+(finData['Revenue Y1']||'Not disclosed')+'\nRevenue Y2: '+(finData['Revenue Y2']||'Not disclosed')+'\nRevenue Y3: '+(finData['Revenue Y3']||'Not disclosed')+'\nEmployees: '+(snapData['Employees']||'Not disclosed')+'\nStrengths: '+strengths.join('; ')+'\nRisks: '+risks.join('; ')+'\nDue Diligence: '+ddItems.join('; ')+'\n\nWrite a comprehensive Investment Memo. Use these exact section headers:\n# EXECUTIVE SUMMARY\n# DEAL OVERVIEW\n# MARKET ANALYSIS\n## Industry Overview & TAM\n## Growth Drivers\n## Headwinds & Challenges\n## Competitive Landscape\n## Customer & Demand Analysis\n# FINANCIAL ANALYSIS\n# COMPARABLE TRANSACTIONS\n# INVESTMENT THESIS\n# KEY RISKS & MITIGANTS\n# RECOMMENDATION\n\nBe specific with numbers. Professional PE memo style for MD presentation.';
+  // FIXED: strict prompt with no markdown, full content required for every section
+  var prompt='You are a senior PE associate at RAMOT Consulting Group writing a formal Investment Memorandum for the Managing Director. Write entirely in clean prose paragraphs. Do not use asterisks, markdown symbols, bullet dashes, or any formatting characters. Every sentence must be complete and professional.\n\nDeal Information:\nBusiness: '+bizName+'\nIndustry: '+industry+'\nDeal Score: '+score+'/100\nVerdict: '+verdict+'\nAsking Price: '+(snapData['Asking price']||'Not disclosed')+'\nRevenue (TTM): '+(snapData['Revenue']||'Not disclosed')+'\nSDE/EBITDA: '+(snapData['SDE']||'Not disclosed')+'\nRevenue Y1: '+(finData['Revenue Y1']||'Not disclosed')+'\nRevenue Y2: '+(finData['Revenue Y2']||'Not disclosed')+'\nRevenue Y3: '+(finData['Revenue Y3']||'Not disclosed')+'\nEmployees: '+(snapData['Employees']||'Not disclosed')+'\nYears Operating: '+(snapData['Years operating']||'Not disclosed')+'\nReason for Sale: '+(snapData['Reason for sale']||'Not disclosed')+'\nKey Strengths: '+strengths.join('; ')+'\nKey Risks: '+risks.join('; ')+'\nDue Diligence Items: '+ddItems.join('; ')+'\n\nWrite a complete Investment Memorandum with ALL of the following sections. Each section must contain at least 3 substantial paragraphs of real analytical content. Do not leave any section sparse or empty.\n\nUse EXACTLY these section headers (with the # prefix):\n\n# EXECUTIVE SUMMARY\n# DEAL OVERVIEW\n# MARKET ANALYSIS\n# FINANCIAL ANALYSIS\n# COMPARABLE TRANSACTIONS\n# INVESTMENT THESIS\n# KEY RISKS & MITIGANTS\n# RECOMMENDATION\n\nCRITICAL RULES:\n1. Write in prose paragraphs only. No bullet points, no dashes, no asterisks.\n2. Every section must have substantive content - no placeholders.\n3. KEY RISKS & MITIGANTS must describe each risk and its mitigant in paragraph form.\n4. RECOMMENDATION must include a clear go/no-go recommendation with supporting rationale and suggested next steps.\n5. Be specific with numbers and data from the deal information provided.';
 
-  // Open window immediately (before async) to avoid popup blocker
   var pdfWin=window.open('','_blank');
-  if(pdfWin)pdfWin.document.write('<html><body><p style="font-family:sans-serif;padding:2rem;color:#666">Generating memo, please wait...</p></body></html>');
+  if(pdfWin)pdfWin.document.write('<html><head><style>body{font-family:Georgia,serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#f8f4ee}</style></head><body><p style="font-size:16px;color:#1a2744">Generating investment memo, please wait...</p></body></html>');
+
   try{
     document.getElementById('mprog').style.width='40%';
     var raw=await callAPI([{role:'user',content:prompt}],'claude-sonnet-4-6',8192);
     document.getElementById('mprog').style.width='90%';
-    document.getElementById('mlmsg').textContent='Opening PDF...';
+    document.getElementById('mlmsg').textContent='Opening memo...';
     var pdfHtml=buildMemoPDF(raw,bizName,industry,score,verdict,snapData,finData);
     document.getElementById('mprog').style.width='100%';
     document.getElementById('memo-load').style.display='none';
@@ -576,31 +560,57 @@ async function genMemo(){
       pdfWin.document.close();
     } else {
       var blob=new Blob([pdfHtml],{type:'text/html'});
-      var url=URL.createObjectURL(blob);
-      window.open(url,'_blank');
+      window.open(URL.createObjectURL(blob),'_blank');
     }
   }catch(e){
     document.getElementById('memo-load').style.display='none';
     document.getElementById('memo-out').style.display='block';
     document.getElementById('memo-out').innerHTML='<div class="errbox">Failed: '+e.message+'</div>';
     document.getElementById('memobtn').disabled=false;
+    if(pdfWin)pdfWin.close();
   }
 }
 
 function buildMemoPDF(raw,bizName,industry,score,verdict,snapData,finData){
+  // FIXED: robust section parser
   var sections={};
   var cur='',buf=[];
   var lines=raw.split('\n');
   for(var i=0;i<lines.length;i++){
-    var line=lines[i].trim();
-    var h1=line.match(/^#{1,2}\s+([^#].+)$/);
-    if(h1&&!line.match(/^###/)){
-      if(cur)sections[cur]=buf.join('\n');
-      cur=h1[1].trim().toUpperCase().replace(/[^A-Z0-9& ]/g,'').trim();
+    var line=lines[i];
+    var h=line.match(/^#{1,2}\s+(.+)$/);
+    if(h&&!line.match(/^###/)){
+      if(cur&&buf.length)sections[cur]=buf.join('\n');
+      cur=h[1].trim().toUpperCase().replace(/[^A-Z0-9&\s]/g,'').trim();
       buf=[];
-    } else {buf.push(lines[i]);}
+    } else {
+      buf.push(line);
+    }
   }
-  if(cur)sections[cur]=buf.join('\n');
+  if(cur&&buf.length)sections[cur]=buf.join('\n');
+
+  // FIXED: flexible section lookup
+  function getSection(key){
+    var keyUp=key.toUpperCase().trim();
+    // Exact match
+    if(sections[keyUp])return sections[keyUp];
+    // Contains match
+    var keys=Object.keys(sections);
+    for(var i=0;i<keys.length;i++){
+      if(keys[i].indexOf(keyUp)>=0||keyUp.indexOf(keys[i])>=0)return sections[keys[i]]||'';
+    }
+    // First-word match
+    var firstWord=keyUp.split(' ')[0];
+    for(var i=0;i<keys.length;i++){
+      if(keys[i].indexOf(firstWord)>=0)return sections[keys[i]]||'';
+    }
+    // Two-word match
+    var twoWords=keyUp.split(' ').slice(0,2).join(' ');
+    for(var i=0;i<keys.length;i++){
+      if(keys[i].indexOf(twoWords)>=0)return sections[keys[i]]||'';
+    }
+    return '';
+  }
 
   var scoreN=parseInt(score);
   var scoreColor=scoreN>=70?'#2d6a4f':scoreN>=50?'#7d5a00':'#7d1a1a';
@@ -619,90 +629,77 @@ function buildMemoPDF(raw,bizName,industry,score,verdict,snapData,finData){
     ['Reason for Sale',snapData['Reason for sale']||'Not disclosed'],
     ['Customer Concentration',snapData['Customer concentration']||'Not disclosed']
   ];
-  var mrows=metrics.map(function(m,i){
-    return '<tr style="background:'+(i%2===0?'#f8f4ee':'#fff')+'"><td style="padding:7px 12px;color:#4a5568;font-size:12px;width:40%;border-right:1px solid #e2e8f0">'+m[0]+'</td><td style="padding:7px 12px;color:#1a2744;font-size:12px;font-weight:500">'+m[1]+'</td></tr>';
+  var mrows=metrics.map(function(m,idx){
+    return '<tr style="background:'+(idx%2===0?'#f8f4ee':'#fff')+'"><td style="padding:8px 14px;color:#4a5568;font-size:12px;width:38%;border-right:1px solid #e2e8f0;font-family:sans-serif">'+m[0]+'</td><td style="padding:8px 14px;color:#1a2744;font-size:12px;font-weight:600;font-family:sans-serif">'+m[1]+'</td></tr>';
   }).join('');
 
-  function getSection(raw){
-    // Try multiple key variations
-    var keys=Object.keys(sections);
-    for(var i=0;i<keys.length;i++){
-      if(keys[i].indexOf(raw.toUpperCase().substring(0,8))===0)return sections[keys[i]]||'';
+  function sec(title,content,dark){
+    var body=md(content);
+    if(dark){
+      body=body.replace(/style="([^"]*)color:#2d3748([^"]*)"/g,'style="$1color:rgba(255,255,255,0.88)$2"');
+      body=body.replace(/style="([^"]*)color:#8a96a8([^"]*)"/g,'style="$1color:rgba(255,255,255,0.5)$2"');
+      return '<div style="margin-top:32px"><div style="font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#b07d4a;margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid #b07d4a">'+title+'</div><div style="background:#1a2744;padding:24px 28px;border-radius:8px">'+body+'</div></div>';
     }
-    return '';
-  }
-  function sec(title,body,isRec){
-    var wrap=isRec?('<div style="background:#1a2744;padding:20px 24px;border-radius:8px">'+body.replace(/<p>/g,'<p style="font-size:13px;line-height:1.7;color:rgba(255,255,255,0.85);margin:0 0 8px">').replace(/<li>/g,'<li style="font-size:13px;line-height:1.65;color:rgba(255,255,255,0.85);margin-bottom:4px">')+'</div>'):body;
-    return '<div style="margin-top:28px"><div style="font-size:10px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:#b07d4a;margin-bottom:10px;padding-bottom:8px;border-bottom:2px solid #b07d4a">'+title+'</div>'+wrap+'</div>';
+    return '<div style="margin-top:32px"><div style="font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#b07d4a;margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid #b07d4a">'+title+'</div>'+body+'</div>';
   }
 
-  var baseStyles='font-size:13px;line-height:1.7;color:#2d3748;';
   var html=
+    '<!DOCTYPE html><html><head>'+
+    '<meta charset="UTF-8">'+
+    '<title>Investment Memo - '+bizName+'</title>'+
     '<style>'+
-    '.memo-pdf p{'+baseStyles+'margin:0 0 8px}'+
-    '.memo-pdf ul{padding-left:1.2rem;margin:6px 0}'+
-    '.memo-pdf li{'+baseStyles+'margin-bottom:4px}'+
-    '.memo-pdf .subsec{font-size:12px;font-weight:600;color:#1a2744;text-transform:uppercase;letter-spacing:0.05em;margin:14px 0 5px}'+
-    '.memo-pdf .subsubsec{font-size:11px;font-weight:600;color:#4a5568;margin:10px 0 4px}'+
-    '.savepdf{position:fixed;bottom:24px;right:24px;background:#1a2744;color:#fff;border:none;border-radius:8px;padding:12px 20px;font-family:sans-serif;font-size:13px;font-weight:500;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,0.2);z-index:100}'+
-    '@media print{.savepdf{display:none!important}}'+
+    'body{margin:0;padding:0;font-family:Georgia,serif;background:#fff;color:#1a2744}'+
+    '@media print{.no-print{display:none!important}@page{margin:0.75in;size:letter portrait}}'+
     '</style>'+
-    '<div class="memo-pdf" style="font-family:Georgia,serif;color:#1a2744;max-width:800px;margin:0 auto">'+
-    '<div style="background:#1a2744;color:#fff;padding:48px 48px 36px">'+
-    '<div style="display:flex;gap:4px;align-items:center;margin-bottom:20px">'+
+    '</head><body>'+
+    // Header
+    '<div style="background:#1a2744;color:#fff;padding:52px 56px 40px">'+
+    '<div style="display:flex;gap:4px;align-items:center;margin-bottom:22px">'+
     '<div style="width:7px;height:7px;border-radius:50%;background:#b07d4a"></div>'+
     '<div style="width:7px;height:7px;border-radius:50%;background:#b07d4a"></div>'+
     '<div style="width:7px;height:7px;border-radius:50%;background:#b07d4a"></div>'+
     '<div style="width:7px;height:7px;border-radius:50%;background:#b07d4a"></div>'+
     '<div style="width:7px;height:7px;border-radius:50%;background:#b07d4a"></div>'+
-    '<div style="width:8px;height:8px;background:#b07d4a;transform:rotate(45deg);margin-left:2px"></div>'+
+    '<div style="width:8px;height:8px;background:#b07d4a;transform:rotate(45deg);margin-left:3px"></div>'+
     '</div>'+
-    '<div style="font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.5);margin-bottom:16px">Investment Memorandum - Confidential</div>'+
-    '<div style="font-size:28px;font-weight:600;margin:0 0 6px;line-height:1.2;font-family:Georgia,serif">'+bizName+'</div>'+
-    '<div style="font-size:12px;color:rgba(255,255,255,0.6);margin-top:8px">'+industry+' &nbsp;|&nbsp; RAMOT Consulting Group &nbsp;|&nbsp; '+today+'</div>'+
-    '<div style="display:inline-flex;align-items:center;gap:12px;background:rgba(255,255,255,0.08);border-radius:8px;padding:10px 16px;margin-top:20px">'+
-    '<div style="width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:600;background:'+scoreBg+';color:'+scoreColor+'">'+score+'</div>'+
-    '<div><div style="font-size:14px;font-weight:500;color:#fff">'+verdict+'</div><div style="font-size:13px;color:rgba(255,255,255,0.7)">Overall deal score</div></div>'+
+    '<div style="font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:rgba(255,255,255,0.45);margin-bottom:18px;font-family:sans-serif">Investment Memorandum &nbsp;&middot;&nbsp; Confidential</div>'+
+    '<div style="font-size:32px;font-weight:600;margin:0 0 8px;line-height:1.2">'+bizName+'</div>'+
+    '<div style="font-size:13px;color:rgba(255,255,255,0.55);font-family:sans-serif">'+industry+' &nbsp;&nbsp;|&nbsp;&nbsp; RAMOT Consulting Group &nbsp;&nbsp;|&nbsp;&nbsp; '+today+'</div>'+
+    '<div style="display:inline-flex;align-items:center;gap:14px;background:rgba(255,255,255,0.09);border-radius:10px;padding:12px 18px;margin-top:24px">'+
+    '<div style="width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:700;background:'+scoreBg+';color:'+scoreColor+';font-family:sans-serif">'+score+'</div>'+
+    '<div><div style="font-size:14px;font-weight:600;color:#fff;font-family:sans-serif">'+verdict+'</div><div style="font-size:12px;color:rgba(255,255,255,0.55);margin-top:2px;font-family:sans-serif">Overall deal score</div></div>'+
     '</div>'+
     '</div>'+
-    '<div style="padding:0 48px 48px;background:#fff">'+
-    sec('Executive Summary',md(getSection('EXECUTIVE SUMMARY')))+
-    '<div style="margin-top:28px"><div style="font-size:10px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:#b07d4a;margin-bottom:10px;padding-bottom:8px;border-bottom:2px solid #b07d4a">Deal Overview</div><table style="width:100%;border-collapse:collapse;border:1px solid #e2e8f0">'+mrows+'</table></div>'+
-    sec('Market Analysis',md(getSection('MARKET ANALYSIS')))+
-    sec('Financial Analysis',md(getSection('FINANCIAL ANALYSIS')))+
-    sec('Comparable Transactions',md(getSection('COMPARABLE TRANSACTIONS')))+
-    sec('Investment Thesis',md(getSection('INVESTMENT THESIS')))+
-    sec('Key Risks & Mitigants',md(getSection('KEY RISKS')))+
-    sec('Recommendation',md(getSection('RECOMMENDATION')),true)+
+    // Body
+    '<div style="padding:40px 56px 56px;max-width:860px;margin:0 auto">'+
+    sec('Executive Summary',getSection('EXECUTIVE SUMMARY'))+
+    '<div style="margin-top:32px"><div style="font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#b07d4a;margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid #b07d4a">Deal Overview</div><table style="width:100%;border-collapse:collapse;border:1px solid #e2e8f0;border-radius:4px;overflow:hidden">'+mrows+'</table></div>'+
+    sec('Market Analysis',getSection('MARKET ANALYSIS'))+
+    sec('Financial Analysis',getSection('FINANCIAL ANALYSIS'))+
+    sec('Comparable Transactions',getSection('COMPARABLE TRANSACTIONS'))+
+    sec('Investment Thesis',getSection('INVESTMENT THESIS'))+
+    sec('Key Risks & Mitigants',getSection('KEY RISKS'))+
+    sec('Recommendation',getSection('RECOMMENDATION'),true)+
     '</div>'+
-    '<div style="background:#f8f4ee;padding:16px 48px;display:flex;justify-content:space-between;align-items:center;border-top:1px solid #e2e8f0">'+
-    '<div style="display:flex;align-items:center;gap:8px">'+
-    '<div style="display:flex;gap:3px;align-items:center">'+
+    // Footer
+    '<div style="background:#f8f4ee;padding:18px 56px;display:flex;justify-content:space-between;align-items:center;border-top:1px solid #e2e8f0">'+
+    '<div style="display:flex;align-items:center;gap:10px">'+
+    '<div style="display:flex;gap:3px">'+
     '<div style="width:5px;height:5px;border-radius:50%;background:#b07d4a"></div>'+
     '<div style="width:5px;height:5px;border-radius:50%;background:#b07d4a"></div>'+
     '<div style="width:5px;height:5px;border-radius:50%;background:#b07d4a"></div>'+
     '<div style="width:5px;height:5px;border-radius:50%;background:#b07d4a"></div>'+
     '<div style="width:5px;height:5px;border-radius:50%;background:#b07d4a"></div>'+
     '</div>'+
-    '<span style="font-family:sans-serif;font-size:13px;font-weight:500;color:#1a2744">RAMOT Consulting Group</span></div>'+
-    '<span style="font-size:11px;color:#8a96a8">Confidential - For internal use only</span>'+
+    '<span style="font-family:sans-serif;font-size:13px;font-weight:600;color:#1a2744;letter-spacing:0.04em">RAMOT Consulting Group</span>'+
     '</div>'+
+    '<span style="font-size:11px;color:#8a96a8;font-family:sans-serif">Confidential &mdash; For Internal Use Only</span>'+
     '</div>'+
-    '';
+    '<script>window.onload=function(){setTimeout(function(){window.print();},800);};<\/script>'+
+    '</body></html>';
 
-  var printStyles='<style>@media print{.savepdf{display:none!important}body{margin:0;padding:0}}body{margin:0;font-family:Georgia,serif}</style>';
-  return '<!DOCTYPE html><html><head><title>Investment Memo - '+bizName+'</title>'+printStyles+'</head><body>'+html+'<script>setTimeout(function(){window.print();},500);<\/script></body></html>';
+  return html;
 }
-
-function printMemo(){
-  var style=document.createElement('style');
-  style.id='pstyle';
-  style.textContent='@media print{#gate,#app > .topbar,#app > .nav,.btnp,.btns,.nb,.signout,#memobtn,#cim-up,#cim-load,.ctabs,.cpanel,.dhead,#pg-calc,.psub,.ptitle{display:none!important}#app{display:block!important}#pg-cim{display:block!important}#cim-res{display:block!important}#memo-out{display:block!important}.savepdf{display:none!important}body{background:#fff!important}.memo-pdf{max-width:none!important}@page{margin:0;size:letter portrait}}';
-  document.head.appendChild(style);
-  window.print();
-  setTimeout(function(){var s=document.getElementById('pstyle');if(s)s.remove();},3000);
-}
-
 </script>
 </body>
 </html>
